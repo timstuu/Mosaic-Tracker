@@ -13,7 +13,7 @@ import { Analytics } from './components/Analytics';
 import { BacklogAdd } from './components/BacklogAdd';
 import { ImportModal } from './components/ImportModal';
 import { EditModal } from './components/EditModal';
-import { MediaItem, MediaType, MediaStatus, Challenge } from './types';
+import { MediaItem, MediaType, Challenge, MediaStatus } from './types';
 import { Star, Search, X, LayoutGrid, BarChart3, Settings as SettingsIcon, Trash2, Database, Shield, Bookmark, ExternalLink, Film, Tv, Book, Gamepad2, Plus, Edit2, Trophy, LogOut, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChallengeModal } from './components/ChallengeModal';
