@@ -10,6 +10,7 @@ create table media_items (
   user_id uuid references auth.users(id) default auth.uid(),
   title text not null,
   type text not null,
+  status text not null,
   rating integer default 0,
   "dateAdded" timestamp with time zone default now(),
   "dateCompleted" timestamp with time zone,

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Film, Tv, Book, Gamepad2, Star, Calendar, Monitor, Cpu } from 'lucide-react';
-import { MediaType, MediaItem } from '../types';
+import { MediaType, MediaStatus, MediaItem } from '../types';
 
 interface MediaFormProps {
   onClose: () => void;
@@ -11,6 +11,7 @@ interface MediaFormProps {
 export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
   const [type, setType] = useState<MediaType>(MediaType.MOVIE);
   const [title, setTitle] = useState('');
+  const [status, setStatus] = useState<MediaStatus>(MediaStatus.PLANNED);
   const [rating, setRating] = useState(0);
   const [watchDate, setWatchDate] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -25,6 +26,7 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
       id: crypto.randomUUID(),
       title,
       type,
+      status,
       rating,
       dateAdded: new Date().toISOString(),
       notes,

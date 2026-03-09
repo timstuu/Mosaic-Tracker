@@ -1,6 +1,6 @@
 import React from 'react';
 import { Trophy, Target, Calendar, Film, Tv, Book, Gamepad2, ChevronRight, Plus } from 'lucide-react';
-import { MediaItem, MediaType, Challenge } from '../types';
+import { MediaItem, MediaType, Challenge, MediaStatus } from '../types';
 import { motion } from 'motion/react';
 
 interface ChallengeProgressProps {
@@ -65,6 +65,7 @@ export const ChallengeProgress: React.FC<ChallengeProgressProps> = ({ challenges
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {activeChallenges.slice(0, 2).map(challenge => {
           const progressCount = items.filter(item => {
+            if (item.status !== MediaStatus.COMPLETED) return false;
             if (item.type !== challenge.mediaType) return false;
             
             const completionDate = new Date(item.watchDate || item.endDate || item.dateAdded);

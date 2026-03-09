@@ -4,7 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, 
   AreaChart, Area 
 } from 'recharts';
-import { MediaItem, MediaType, Challenge } from '../types';
+import { MediaItem, MediaType, Challenge, MediaStatus } from '../types';
 import { Star, TrendingUp, LayoutGrid, Award, Trophy, Plus, Trash2, Calendar, Target, Film, Tv, Book, Gamepad2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -64,6 +64,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ items, challenges, onAddCh
   const challengeStats = useMemo(() => {
     return challenges.map(challenge => {
       const progressCount = items.filter(item => {
+        if (item.status !== MediaStatus.COMPLETED) return false;
         if (item.type !== challenge.mediaType) return false;
         
         const completionDate = new Date(item.watchDate || item.endDate || item.dateAdded);

@@ -128,41 +128,6 @@ export default function App() {
     }
   };
 
-  const handleClearData = async (status: MediaStatus) => {
-    if (!isSupabaseConfigured) return;
-    
-    const label = status === MediaStatus.COMPLETED ? 'Tracker History' : 'Backlog';
-    const itemsToDelete = mediaItems.filter(item => item.status === status);
-    
-    if (itemsToDelete.length === 0) {
-      alert(`No items found in your ${label} to clear.`);
-      return;
-    }
-
-    if (!confirm(`Are you sure you want to clear your entire ${label} (${itemsToDelete.length} items)? This cannot be undone.`)) {
-      return;
-    }
-
-    try {
-      const idsToDelete = itemsToDelete.map(item => item.id);
-      console.log(`Attempting to clear ${label} with ${idsToDelete.length} items:`, idsToDelete);
-
-      const { error } = await supabase
-        .from('media_items')
-        .delete()
-        .in('id', idsToDelete);
-      
-      if (error) throw error;
-      
-      console.log(`Successfully cleared ${label}`);
-      await fetchMedia();
-      alert(`Successfully cleared ${label}.`);
-    } catch (error) {
-      console.error(`Failed to clear ${label}:`, error);
-      alert(`Failed to clear ${label}. Please check the console for details.`);
-    }
-  };
-
   const handleSaveMedia = async (item: Partial<MediaItem>) => {
     if (!isSupabaseConfigured) {
       alert('Please configure Supabase in your environment variables first.');
@@ -615,23 +580,15 @@ export default function App() {
               <div className="text-white">→</div>
             </button>
             <button 
-              onClick={() => handleClearData(MediaStatus.COMPLETED)}
+              onClick={() => {
+                if (confirm('Are you sure you want to clear your entire library? This cannot be undone.')) {
+                  // Logic to clear all items would go here
+                  alert('This feature is coming soon!');
+                }
+              }}
               className="w-full flex items-center justify-between p-4 bg-red-500/10 rounded-2xl hover:bg-red-500/20 transition-colors group"
             >
-              <div className="flex flex-col items-start">
-                <span className="text-sm text-red-400 group-hover:text-red-300">Clear Tracker History</span>
-                <span className="text-[10px] text-red-400/60">Delete all completed items</span>
-              </div>
-              <Trash2 size={16} className="text-red-500/50" />
-            </button>
-            <button 
-              onClick={() => handleClearData(MediaStatus.PLANNED)}
-              className="w-full flex items-center justify-between p-4 bg-red-500/10 rounded-2xl hover:bg-red-500/20 transition-colors group"
-            >
-              <div className="flex flex-col items-start">
-                <span className="text-sm text-red-400 group-hover:text-red-300">Clear Backlog</span>
-                <span className="text-[10px] text-red-400/60">Delete all planned items</span>
-              </div>
+              <span className="text-sm text-red-400 group-hover:text-red-300">Clear All Data</span>
               <Trash2 size={16} className="text-red-500/50" />
             </button>
           </div>
