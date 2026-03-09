@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Film, Tv, Book, Gamepad2, Star, Plus } from 'lucide-react';
-import { MediaType, MediaItem, MediaStatus } from '../types';
+import { MediaType, MediaItem } from '../types';
 import { fetchMediaPoster } from '../services/tmdbService';
 import { fetchBookCover } from '../services/bookService';
 import { fetchGameCover } from '../services/gameService';
@@ -38,7 +38,6 @@ export const QuickAdd: React.FC<QuickAddProps> = ({ onSave }) => {
       id: crypto.randomUUID(),
       title,
       type,
-      status: MediaStatus.COMPLETED,
       rating,
       dateAdded: new Date().toISOString(),
       watchDate: [MediaType.MOVIE, MediaType.DOCUMENTARY].includes(type) ? watchDate : undefined,
