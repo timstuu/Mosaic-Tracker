@@ -37,7 +37,10 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImp
             const title = row.Name || row.Title || row.title || row.name;
             const rawRating = row.Rating || row['My Rating'] || row.rating || '0';
             const rating = Math.round(parseFloat(rawRating)) || 0;
-            const dateStr = row.Date || row['Date Read'] || row.date || new Date().toISOString();
+            
+            // Letterboxd diary exports have 'Watched Date' as the actual viewing date
+            // Goodreads has 'Date Read'
+            const dateStr = row['Watched Date'] || row.Date || row['Date Read'] || row.date || new Date().toISOString();
 
             if (!title) return null;
 
