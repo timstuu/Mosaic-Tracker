@@ -10,6 +10,7 @@ export interface MediaItem {
   id: string;
   title: string;
   type: MediaType;
+  status: string;
   rating: number; // 0-5
   dateAdded: string; // ISO string
   dateCompleted?: string; // ISO string
