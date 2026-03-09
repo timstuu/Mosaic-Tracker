@@ -7,9 +7,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
   return {
-    // If you are deploying to GitHub Pages at https://<username>.github.io/<repo-name>/
-    // set base to '/<repo-name>/'
-    // base: '/mosaic-tracker/',
+    base: './',
     plugins: [
       react(),
       tailwindcss(),
