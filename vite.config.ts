@@ -11,34 +11,45 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       tailwindcss(),
-      VitePWA({
-        registerType: 'autoUpdate',
-        includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
-        manifest: {
-          name: 'Mosaic Media Tracker',
-          short_name: 'Mosaic',
-          description: 'A minimalist tracker for your movies, series, books, and games.',
-          theme_color: '#232f3c',
-          icons: [
-            {
-              src: 'pwa-192x192.png',
-              sizes: '192x192',
-              type: 'image/png'
-            },
-            {
-              src: 'pwa-512x512.png',
-              sizes: '512x512',
-              type: 'image/png'
-            },
-            {
-              src: 'pwa-512x512.png',
-              sizes: '512x512',
-              type: 'image/png',
-              purpose: 'any maskable'
-            }
-          ]
-        }
-      })
+        VitePWA({
+          registerType: 'autoUpdate',
+          includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'favicon-32x32.png', 'favicon-16x16.png'],
+          manifest: {
+            name: 'Mosaic Media Tracker',
+            short_name: 'Mosaic',
+            description: 'A minimalist tracker for your movies, series, books, and games.',
+            theme_color: '#232f3c',
+            background_color: '#232f3c',
+            icons: [
+              {
+                src: 'favicon-32x32.png',
+                sizes: '32x32',
+                type: 'image/png'
+              },
+              {
+                src: 'favicon-16x16.png',
+                sizes: '16x16',
+                type: 'image/png'
+              },
+              {
+                src: 'icon-192.png',
+                sizes: '192x192',
+                type: 'image/png'
+              },
+              {
+                src: 'icon-512.png',
+                sizes: '512x512',
+                type: 'image/png'
+              },
+              {
+                src: 'icon-512.png',
+                sizes: '512x512',
+                type: 'image/png',
+                purpose: 'any maskable'
+              }
+            ]
+          }
+        })
     ],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),

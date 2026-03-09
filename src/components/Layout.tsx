@@ -16,8 +16,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, onSearchToggle }) => {
           <div 
             className="flex items-center gap-3 cursor-pointer group"
           >
-            <div className="w-10 h-10 bg-primary-accent rounded-xl flex items-center justify-center group-hover:rotate-12 transition-transform shadow-lg shadow-primary-accent/20 overflow-hidden text-app-bg">
-              <MosaicLogo size={24} />
+            <div className="w-10 h-10 bg-primary-accent rounded-xl flex items-center justify-center group-hover:rotate-12 transition-transform shadow-lg shadow-primary-accent/20 overflow-hidden">
+              <MosaicLogo size={40} className="w-full h-full" />
             </div>
             <span className="font-semibold text-xl tracking-tight text-white">Mosaic</span>
           </div>
@@ -40,7 +40,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, onSearchToggle }) => {
       <footer className="border-t border-white/5 py-12 bg-app-bg">
         <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row justify-between items-center gap-8">
           <div className="flex items-center gap-2 opacity-30">
-            <MosaicLogo size={16} className="text-primary-accent" />
+            <MosaicLogo size={16} className="rounded-sm" />
             <span className="text-xs font-mono uppercase tracking-widest">Mosaic Media Tracker</span>
           </div>
           <div className="flex gap-8 text-xs font-medium text-white">

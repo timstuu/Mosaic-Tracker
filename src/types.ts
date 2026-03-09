@@ -6,18 +6,10 @@ export enum MediaType {
   GAME = 'game'
 }
 
-export enum MediaStatus {
-  PLANNED = 'planned',
-  IN_PROGRESS = 'in_progress',
-  COMPLETED = 'completed',
-  DROPPED = 'dropped'
-}
-
 export interface MediaItem {
   id: string;
   title: string;
   type: MediaType;
-  status: MediaStatus;
   rating: number; // 0-5
   dateAdded: string; // ISO string
   dateCompleted?: string; // ISO string

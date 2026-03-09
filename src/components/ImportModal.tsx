@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { X, Upload, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
 import Papa from 'papaparse';
-import { MediaType, MediaStatus, MediaItem } from '../types';
+import { MediaType, MediaItem } from '../types';
 
 interface ImportModalProps {
   isOpen: boolean;
@@ -12,7 +12,6 @@ interface ImportModalProps {
 export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport }) => {
   const [step, setStep] = useState<'config' | 'upload' | 'processing'>('config');
   const [mediaType, setMediaType] = useState<MediaType>(MediaType.MOVIE);
-  const [status, setStatus] = useState<MediaStatus>(MediaStatus.COMPLETED);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -48,11 +47,10 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImp
               id: crypto.randomUUID(),
               title: title.trim(),
               type: mediaType,
-              status: status,
               rating: Math.min(5, Math.max(0, rating)),
               dateAdded: new Date().toISOString(),
-              watchDate: status === MediaStatus.COMPLETED ? dateStr : undefined,
-              endDate: (status === MediaStatus.COMPLETED && mediaType === MediaType.BOOK) ? dateStr : undefined,
+              watchDate: dateStr,
+              endDate: mediaType === MediaType.BOOK ? dateStr : undefined,
             };
           }).filter(Boolean) as Partial<MediaItem>[];
 
@@ -106,26 +104,6 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImp
                   >
                     <div className="text-xs font-bold uppercase tracking-wider mb-1">Reading</div>
                     <div className="text-[10px] opacity-70">Books, Novels</div>
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <label className="block text-[10px] font-bold text-white uppercase tracking-widest ml-1">2. Destination</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button 
-                    onClick={() => setStatus(MediaStatus.COMPLETED)}
-                    className={`p-4 rounded-2xl border transition-all text-left ${status === MediaStatus.COMPLETED ? 'bg-primary-accent border-primary-accent text-app-bg' : 'bg-white/5 border-white/5 text-zinc-400 hover:border-white/10'}`}
-                  >
-                    <div className="text-xs font-bold uppercase tracking-wider mb-1">Completed</div>
-                    <div className="text-[10px] opacity-70">Already seen/read</div>
-                  </button>
-                  <button 
-                    onClick={() => setStatus(MediaStatus.PLANNED)}
-                    className={`p-4 rounded-2xl border transition-all text-left ${status === MediaStatus.PLANNED ? 'bg-primary-accent border-primary-accent text-app-bg' : 'bg-white/5 border-white/5 text-zinc-400 hover:border-white/10'}`}
-                  >
-                    <div className="text-xs font-bold uppercase tracking-wider mb-1">Backlog</div>
-                    <div className="text-[10px] opacity-70">Plan to watch/read</div>
                   </button>
                 </div>
               </div>
