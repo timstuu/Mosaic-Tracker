@@ -1,0 +1,5 @@
+{
+  "name": "Mosaic Tracker",
+  "description": "A minimalist, high-performance PWA media tracking application for movies, series, books, and games with Supabase backend.",
+  "requestFramePermissions": []
+}
