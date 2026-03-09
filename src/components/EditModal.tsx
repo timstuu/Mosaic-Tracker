@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Film, Tv, Book, Gamepad2, Star, Calendar, Monitor, Cpu } from 'lucide-react';
-import { MediaType, MediaItem } from '../types';
+import { MediaType, MediaStatus, MediaItem } from '../types.ts';
 import { fetchMediaPoster } from '../services/tmdbService';
 import { fetchBookCover } from '../services/bookService';
 import { fetchGameCover } from '../services/gameService';
@@ -16,6 +16,7 @@ interface EditModalProps {
 export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onDelete }) => {
   const [type, setType] = useState<MediaType>(item.type);
   const [title, setTitle] = useState(item.title);
+  const [status, setStatus] = useState<MediaStatus>(item.status);
   const [rating, setRating] = useState(item.rating || 0);
   const [watchDate, setWatchDate] = useState(item.watchDate || '');
   const [startDate, setStartDate] = useState(item.startDate || '');
@@ -47,6 +48,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
       ...item,
       title,
       type,
+      status,
       rating,
       notes,
       tags,
@@ -79,7 +81,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
       >
         <div className="p-6 border-b border-white/5 flex justify-between items-center bg-secondary-accent/50">
           <h2 className="text-xl font-semibold text-white">
-            Edit Media
+            {item.status === MediaStatus.PLANNED && status === MediaStatus.COMPLETED ? 'Complete Tracking' : 'Edit Media'}
           </h2>
           <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full text-zinc-400 transition-colors">
             <X size={20} />
