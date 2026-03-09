@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Film, Tv, Book, Gamepad2, Link as LinkIcon, Plus } from 'lucide-react';
-import { MediaType, MediaItem, MediaStatus } from '../types.ts';
+import { MediaType, MediaItem, MediaStatus } from '../types';
 import { fetchMediaPoster } from '../services/tmdbService';
 import { fetchBookCover } from '../services/bookService';
 import { fetchGameCover } from '../services/gameService';

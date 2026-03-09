@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Film, Tv, Book, Gamepad2, Star, Calendar, Monitor, Cpu } from 'lucide-react';
-import { MediaType, MediaStatus, MediaItem } from '../types.ts';
+import { MediaType, MediaStatus, MediaItem } from '../types';
 import { fetchMediaPoster } from '../services/tmdbService';
 import { fetchBookCover } from '../services/bookService';
 import { fetchGameCover } from '../services/gameService';
