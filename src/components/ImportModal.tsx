@@ -1,16 +1,17 @@
 import React, { useState, useRef } from 'react';
 import { X, Upload, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
 import Papa from 'papaparse';
-import { MediaType, MediaItem } from '../types';
+import { MediaType, MediaItem, MediaStatus } from '../types';
 
 interface ImportModalProps {
   isOpen: boolean;
   onClose: () => void;
   onImport: (items: Partial<MediaItem>[]) => void;
+  mode?: 'library' | 'watchlist';
 }
 
-export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport }) => {
-  const [step, setStep] = useState<'config' | 'upload' | 'processing'>('config');
+export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImport, mode = 'library' }) => {
+  const [step, setStep] = useState<'config' | 'upload' | 'processing'>(mode === 'watchlist' ? 'upload' : 'config');
   const [mediaType, setMediaType] = useState<MediaType>(MediaType.MOVIE);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -30,7 +31,22 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImp
       complete: (results) => {
         try {
           const importedItems: Partial<MediaItem>[] = results.data.map((row: any) => {
-            // Basic mapping logic for Letterboxd/Goodreads
+            if (mode === 'watchlist') {
+              // Letterboxd Watchlist: Date, Name, Year, Letterboxd URI
+              const title = row.Name || row.name || row.Title || row.title;
+              if (!title) return null;
+
+              return {
+                id: crypto.randomUUID(),
+                title: title.trim(),
+                type: MediaType.MOVIE,
+                status: MediaStatus.PLANNED,
+                dateAdded: row.Date || row.addedDate || new Date().toISOString(),
+                link: row['Letterboxd URI'] || row.uri || undefined,
+              };
+            }
+
+            // Basic mapping logic for Letterboxd/Goodreads Library
             // Letterboxd: Name, Year, Rating
             // Goodreads: Title, Author, My Rating
             const title = row.Name || row.Title || row.title || row.name;
@@ -47,6 +63,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImp
               id: crypto.randomUUID(),
               title: title.trim(),
               type: mediaType,
+              status: MediaStatus.COMPLETED,
               rating: Math.min(5, Math.max(0, rating)),
               dateAdded: new Date().toISOString(),
               watchDate: dateStr,
@@ -60,7 +77,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImp
 
           onImport(importedItems);
           onClose();
-          setStep('config');
+          setStep(mode === 'watchlist' ? 'upload' : 'config');
         } catch (err: any) {
           setError(err.message || 'Failed to parse CSV');
           setStep('upload');
@@ -80,7 +97,9 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImp
       <div className="relative w-full max-w-md bg-secondary-accent border border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
         <div className="p-8">
           <div className="flex items-center justify-between mb-8">
-            <h2 className="text-xl font-serif italic text-white">Import Library</h2>
+            <h2 className="text-xl font-serif italic text-white">
+              {mode === 'watchlist' ? 'Import Watchlist' : 'Import Library'}
+            </h2>
             <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full text-zinc-500 transition-colors">
               <X size={20} />
             </button>
@@ -135,7 +154,9 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImp
                   <Upload className="text-zinc-300 group-hover:text-primary-accent" />
                 </div>
                 <h3 className="text-white font-medium mb-1">Select CSV File</h3>
-                <p className="text-xs text-white">Letterboxd or Goodreads export</p>
+                <p className="text-xs text-white">
+                  {mode === 'watchlist' ? 'Letterboxd Watchlist export' : 'Letterboxd or Goodreads export'}
+                </p>
               </div>
 
               {error && (
@@ -146,7 +167,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImp
               )}
 
               <button 
-                onClick={() => setStep('config')}
+                onClick={() => mode === 'watchlist' ? onClose() : setStep('config')}
                 className="w-full py-4 text-xs font-bold text-white uppercase tracking-widest hover:text-primary-accent transition-colors"
               >
                 ← Back to settings

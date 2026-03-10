@@ -29,6 +29,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importMode, setImportMode] = useState<'library' | 'watchlist'>('library');
   const [editingItem, setEditingItem] = useState<MediaItem | null>(null);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [isChallengeModalOpen, setIsChallengeModalOpen] = useState(false);
@@ -261,31 +262,25 @@ export default function App() {
     return (
       <div className="space-y-1">
         {/* Table Header - Hidden on mobile */}
-        <div className="hidden md:grid grid-cols-[140px_60px_1fr_120px] px-6 py-3 text-[10px] font-bold text-white uppercase tracking-widest border-b border-white/5">
+        <div className="hidden md:grid grid-cols-[140px_60px_48px_1fr_120px] px-6 py-3 text-[10px] font-bold text-white uppercase tracking-widest border-b border-white/5">
           <div>Period</div>
           <div>Day</div>
+          <div></div>
           <div>Title</div>
           <div className="text-right">Rating</div>
         </div>
 
         {items.map((item, index) => {
           const date = new Date(item.watchDate || item.endDate || item.dateAdded);
-          const currentMonthYear = date.toLocaleString('default', { month: 'long', year: 'numeric' });
+          const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'numeric' });
           
-          const showMobileHeader = currentMonthYear !== lastMonthYear;
+          const isFirstInMonth = currentMonthYear !== lastMonthYear;
           lastMonthYear = currentMonthYear;
-
-          const nextItem = items[index + 1];
-          const nextMonthYear = nextItem 
-            ? new Date(nextItem.watchDate || nextItem.endDate || nextItem.dateAdded).toLocaleString('default', { month: 'long', year: 'numeric' })
-            : "";
-          
-          const isLastInMonth = currentMonthYear !== nextMonthYear;
 
           return (
             <React.Fragment key={item.id}>
               {/* Mobile Month Divider */}
-              {showMobileHeader && (
+              {isFirstInMonth && (
                 <div className="md:hidden px-4 py-2 bg-white/5 border-y border-white/[0.05] text-[10px] font-bold text-primary-accent uppercase tracking-widest">
                   {currentMonthYear}
                 </div>
@@ -298,7 +293,7 @@ export default function App() {
               >
                 {/* Desktop Period Column */}
                 <div className="hidden md:block text-sm font-serif italic text-primary-accent">
-                  {isLastInMonth ? currentMonthYear : ""}
+                  {isFirstInMonth ? currentMonthYear : ""}
                 </div>
                 
                 {/* Day Column */}
@@ -326,29 +321,31 @@ export default function App() {
                 
                 {/* Title & Rating Container */}
                 <div className="flex-1 md:contents">
-                  <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-4">
-                    <div className="text-sm font-medium text-white group-hover:text-primary-accent transition-colors truncate md:overflow-visible">
+                  <div className="flex flex-col md:flex-row md:items-start md:py-1 gap-1 md:gap-4">
+                    <div className="text-sm font-medium text-white group-hover:text-primary-accent transition-colors whitespace-normal break-words">
                       {item.title}
                     </div>
-                    {(item.startDate && item.endDate) && (
-                      <div className="text-[10px] text-white font-mono whitespace-nowrap">
-                        {new Date(item.startDate).toLocaleDateString()} – {new Date(item.endDate).toLocaleDateString()}
-                      </div>
-                    )}
-                    {(item.platform || item.console) && (
-                      <span className="text-[10px] text-zinc-500 uppercase tracking-widest">
-                        {item.platform || item.console}
-                      </span>
-                    )}
-                    {item.tags && (
-                      <div className="flex flex-wrap gap-1">
-                        {item.tags.split(',').map((tag, i) => (
-                          <span key={i} className="px-1.5 py-0.5 bg-primary-accent/10 border border-primary-accent/20 rounded text-[8px] font-bold text-primary-accent uppercase tracking-widest">
-                            {tag.trim()}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                    <div className="flex flex-wrap items-center gap-2">
+                      {(item.startDate && item.endDate) && (
+                        <div className="text-[10px] text-white font-mono whitespace-nowrap">
+                          {new Date(item.startDate).toLocaleDateString()} – {new Date(item.endDate).toLocaleDateString()}
+                        </div>
+                      )}
+                      {(item.platform || item.console) && (
+                        <span className="text-[10px] text-zinc-500 uppercase tracking-widest">
+                          {item.platform || item.console}
+                        </span>
+                      )}
+                      {item.tags && (
+                        <div className="flex flex-wrap gap-1">
+                          {item.tags.split(',').map((tag, i) => (
+                            <span key={i} className="px-1.5 py-0.5 bg-primary-accent/10 border border-primary-accent/20 rounded text-[8px] font-bold text-primary-accent uppercase tracking-widest">
+                              {tag.trim()}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex md:justify-end items-center gap-2 mt-1 md:mt-0">
@@ -608,10 +605,26 @@ export default function App() {
               <div className="text-white">→</div>
             </button>
             <button 
-              onClick={() => setIsImportModalOpen(true)}
+              onClick={() => {
+                setImportMode('library');
+                setIsImportModalOpen(true);
+              }}
               className="w-full flex items-center justify-between p-4 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors group"
             >
               <span className="text-sm text-white group-hover:text-white">Import Library (CSV)</span>
+              <div className="text-white">→</div>
+            </button>
+            <button 
+              onClick={() => {
+                setImportMode('watchlist');
+                setIsImportModalOpen(true);
+              }}
+              className="w-full flex items-center justify-between p-4 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors group"
+            >
+              <div className="flex flex-col items-start">
+                <span className="text-sm text-white group-hover:text-white">Import Letterboxd Watchlist</span>
+                <span className="text-[10px] text-zinc-500 uppercase tracking-widest">Added to Backlog</span>
+              </div>
               <div className="text-white">→</div>
             </button>
             <button 
@@ -710,6 +723,7 @@ export default function App() {
         isOpen={isImportModalOpen} 
         onClose={() => setIsImportModalOpen(false)} 
         onImport={handleImport} 
+        mode={importMode}
       />
 
       <AnimatePresence>
