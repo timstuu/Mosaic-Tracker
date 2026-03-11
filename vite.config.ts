@@ -13,7 +13,7 @@ export default defineConfig(({ mode }) => {
       tailwindcss(),
         VitePWA({
           registerType: 'autoUpdate',
-          includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'favicon-32x32.png', 'favicon-16x16.png'],
+          includeAssets: ['favicon.ico', 'icons/apple-touch-icon.png', 'icons/favicon-32x32.png', 'icons/favicon-16x16.png'],
           manifest: {
             name: 'Mosaic Media Tracker',
             short_name: 'Mosaic',
@@ -22,27 +22,27 @@ export default defineConfig(({ mode }) => {
             background_color: '#232f3c',
             icons: [
               {
-                src: '/icons/favicon-32x32.png',
+                src: 'icons/favicon-32x32.png',
                 sizes: '32x32',
                 type: 'image/png'
               },
               {
-                src: '/icons/favicon-16x16.png',
+                src: 'icons/favicon-16x16.png',
                 sizes: '16x16',
                 type: 'image/png'
               },
               {
-                src: 'icon-192.png',
+                src: 'icons/icon-192.png',
                 sizes: '192x192',
                 type: 'image/png'
               },
               {
-                src: '/icons/icon-512.png',
+                src: 'icons/icon-512.png',
                 sizes: '512x512',
                 type: 'image/png'
               },
               {
-                src: '/icons/icon-512.png',
+                src: 'icons/icon-512.png',
                 sizes: '512x512',
                 type: 'image/png',
                 purpose: 'any maskable'
