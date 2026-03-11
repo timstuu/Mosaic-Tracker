@@ -8,7 +8,7 @@ interface MosaicLogoProps {
 export const MosaicLogo: React.FC<MosaicLogoProps> = ({ className = "", size = 40 }) => {
   return (
     <img 
-      src="favicon-32x32.png" 
+      src="/icons/apple-touch-icon.png" 
       alt="Mosaic Logo" 
       width={size} 
       height={size} 
