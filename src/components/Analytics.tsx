@@ -4,7 +4,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, 
   AreaChart, Area 
 } from 'recharts';
-import { MediaItem, MediaType, Challenge } from '../types';
+import { MediaItem, MediaType, Challenge, MediaStatus } from '../types';
 import { Star, TrendingUp, LayoutGrid, Award, Trophy, Plus, Trash2, Calendar, Target, Film, Tv, Book, Gamepad2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -13,11 +13,17 @@ interface AnalyticsProps {
   challenges: Challenge[];
   onAddChallenge: () => void;
   onDeleteChallenge: (id: string) => void;
+  onItemClick?: (item: MediaItem) => void;
 }
 
 const COLORS = ['#DFD0B8', '#393E46', '#5C8374', '#9EC8B9', '#1B262C'];
 
-export const Analytics: React.FC<AnalyticsProps> = ({ items, challenges, onAddChallenge, onDeleteChallenge }) => {
+import { MosaicView } from './MosaicView';
+import { X } from 'lucide-react';
+
+export const Analytics: React.FC<AnalyticsProps> = ({ items, challenges, onAddChallenge, onDeleteChallenge, onItemClick }) => {
+  const [selectedChallenge, setSelectedChallenge] = useState<any>(null);
+
   const stats = useMemo(() => {
     if (items.length === 0) return null;
 
@@ -63,16 +69,22 @@ export const Analytics: React.FC<AnalyticsProps> = ({ items, challenges, onAddCh
 
   const challengeStats = useMemo(() => {
     return challenges.map(challenge => {
-      const progressCount = items.filter(item => {
+      const challengeItems = items.filter(item => {
         if (item.type !== challenge.mediaType) return false;
+        if (item.status !== MediaStatus.COMPLETED) return false;
         
         const completionDate = new Date(item.watchDate || item.endDate || item.dateAdded);
         const start = new Date(challenge.startDate);
         const end = new Date(challenge.endDate);
         
         return completionDate >= start && completionDate <= end;
-      }).length;
+      }).sort((a, b) => {
+        const dateA = new Date(a.watchDate || a.endDate || a.dateAdded).getTime();
+        const dateB = new Date(b.watchDate || b.endDate || b.dateAdded).getTime();
+        return dateB - dateA;
+      });
 
+      const progressCount = challengeItems.length;
       const progressPercent = Math.min(100, (progressCount / challenge.targetCount) * 100);
       const isCompleted = progressCount >= challenge.targetCount;
       const daysLeft = Math.ceil((new Date(challenge.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
@@ -82,7 +94,8 @@ export const Analytics: React.FC<AnalyticsProps> = ({ items, challenges, onAddCh
         progressCount,
         progressPercent,
         isCompleted,
-        daysLeft
+        daysLeft,
+        items: challengeItems
       };
     });
   }, [challenges, items]);
@@ -268,7 +281,8 @@ export const Analytics: React.FC<AnalyticsProps> = ({ items, challenges, onAddCh
               <motion.div 
                 layout
                 key={challenge.id}
-                className="bg-secondary-accent border border-white/5 rounded-3xl p-6 shadow-xl relative overflow-hidden group"
+                onClick={() => setSelectedChallenge(challenge)}
+                className="bg-secondary-accent border border-white/5 rounded-3xl p-6 shadow-xl relative overflow-hidden group cursor-pointer hover:bg-secondary-accent/80 transition-colors"
               >
                 {challenge.isCompleted && (
                   <div className="absolute top-0 right-0 p-4">
@@ -289,7 +303,10 @@ export const Analytics: React.FC<AnalyticsProps> = ({ items, challenges, onAddCh
                     <h4 className="text-lg font-serif italic text-white">{challenge.name}</h4>
                   </div>
                   <button 
-                    onClick={() => onDeleteChallenge(challenge.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteChallenge(challenge.id);
+                    }}
                     className="p-2 text-zinc-600 hover:text-red-500 transition-colors"
                   >
                     <Trash2 size={14} />
@@ -350,6 +367,57 @@ export const Analytics: React.FC<AnalyticsProps> = ({ items, challenges, onAddCh
         </div>
         {renderOverview()}
       </section>
+
+      <AnimatePresence>
+        {selectedChallenge && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedChallenge(null)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-4xl max-h-[90vh] bg-app-bg border border-white/10 rounded-3xl shadow-2xl flex flex-col overflow-hidden"
+            >
+              <div className="flex items-center justify-between p-6 border-b border-white/10 bg-secondary-accent/50">
+                <div>
+                  <h2 className="text-2xl font-serif italic text-white">{selectedChallenge.name}</h2>
+                  <p className="text-zinc-400 text-sm mt-1">
+                    {selectedChallenge.progressCount} / {selectedChallenge.targetCount} {selectedChallenge.mediaType}s completed
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedChallenge(null)}
+                  className="p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-full transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-2">
+                {selectedChallenge.items.length > 0 ? (
+                  <MosaicView 
+                    items={selectedChallenge.items} 
+                    onItemClick={(item) => {
+                      setSelectedChallenge(null);
+                      if (onItemClick) onItemClick(item);
+                    }} 
+                  />
+                ) : (
+                  <div className="py-20 text-center">
+                    <p className="text-zinc-400 font-serif italic">No entries completed for this challenge yet.</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
