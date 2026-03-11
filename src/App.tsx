@@ -35,7 +35,7 @@ export default function App() {
   const [editingItem, setEditingItem] = useState<MediaItem | null>(null);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [isChallengeModalOpen, setIsChallengeModalOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<'list' | 'mosaic'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'mosaic'>('mosaic');
   const [expandedBacklogTypes, setExpandedBacklogTypes] = useState<Set<MediaType>>(new Set());
 
   useEffect(() => {
