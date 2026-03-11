@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { Mail, Lock, Loader2, ArrowRight } from 'lucide-react';
 import { motion } from 'motion/react';
-import { MosaicLogo } from './MosaicLogo';
+import { AppLogo } from './AppLogo';
 
 export function Auth() {
   const [loading, setLoading] = useState(false);
@@ -47,7 +47,7 @@ export function Auth() {
       >
         <div className="text-center mb-12">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary-accent/10 mb-6 overflow-hidden">
-            <MosaicLogo size={64} className="w-full h-full" />
+            <AppLogo size={64} className="w-full h-full" />
           </div>
           <h1 className="text-4xl font-serif italic text-white mb-3">Mosaic</h1>
           <p className="text-zinc-400 text-sm tracking-wide uppercase">
