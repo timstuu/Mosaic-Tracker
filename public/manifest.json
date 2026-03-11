@@ -1,13 +1,13 @@
 {
   "short_name": "Mosaic",
   "name": "Mosaic Tracker",
-  "icons": [
-    {
-      "src": "logo.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    }
+  "icons": 
+  [
+  {
+    "src": "/android-chrome-512x512.png",
+    "sizes": "512x512",
+    "type": "image/png"
+  }
   ],
   "start_url": ".",
   "display": "standalone",
