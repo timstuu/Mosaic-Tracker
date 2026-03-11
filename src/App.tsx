@@ -380,23 +380,6 @@ export default function App() {
 
   const renderTracker = () => (
     <div className="max-w-4xl mx-auto">
-      <div className="flex justify-end mb-4">
-        <div className="bg-secondary-accent/50 p-1 rounded-xl border border-white/5 flex gap-1">
-          <button
-            onClick={() => setViewMode('list')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors ${viewMode === 'list' ? 'bg-primary-accent text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-          >
-            List
-          </button>
-          <button
-            onClick={() => setViewMode('mosaic')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors ${viewMode === 'mosaic' ? 'bg-primary-accent text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-          >
-            Mosaic
-          </button>
-        </div>
-      </div>
-
       <AnimatePresence>
         {isSearchVisible && (
           <motion.div 
@@ -429,6 +412,23 @@ export default function App() {
       </AnimatePresence>
 
       <QuickAdd onSave={handleSaveMedia} />
+
+      <div className="flex justify-end mb-4 mt-8">
+        <div className="bg-secondary-accent/50 p-1 rounded-xl border border-white/5 flex gap-1">
+          <button
+            onClick={() => setViewMode('list')}
+            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors ${viewMode === 'list' ? 'bg-primary-accent text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+          >
+            List
+          </button>
+          <button
+            onClick={() => setViewMode('mosaic')}
+            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors ${viewMode === 'mosaic' ? 'bg-primary-accent text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+          >
+            Mosaic
+          </button>
+        </div>
+      </div>
 
       <div className="bg-secondary-accent/30 rounded-[2.5rem] border border-white/5 overflow-hidden backdrop-blur-sm mb-24">
         {loading ? (
