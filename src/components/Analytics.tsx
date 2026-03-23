@@ -25,23 +25,31 @@ export const Analytics: React.FC<AnalyticsProps> = ({ items, challenges, onAddCh
   const [selectedChallenge, setSelectedChallenge] = useState<any>(null);
 
   const stats = useMemo(() => {
-    if (items.length === 0) return null;
+    const completedItems = items.filter(item => {
+      if (item.status !== MediaStatus.COMPLETED) return false;
+      if ([MediaType.SERIES, MediaType.BOOK, MediaType.GAME].includes(item.type)) {
+        return !!item.endDate;
+      }
+      return !!item.watchDate;
+    });
+
+    if (completedItems.length === 0) return null;
 
     // 1. Media Type Distribution
     const typeDistribution = Object.values(MediaType).map(type => ({
       name: type.charAt(0).toUpperCase() + type.slice(1),
-      value: items.filter(item => item.type === type).length
+      value: completedItems.filter(item => item.type === type).length
     })).filter(d => d.value > 0);
 
     // 2. Rating Distribution
     const ratingDistribution = [1, 2, 3, 4, 5].map(rating => ({
       rating: `${rating} Stars`,
-      count: items.filter(item => item.rating === rating).length
+      count: completedItems.filter(item => item.rating === rating).length
     }));
 
     // 3. Activity by Month
     const activityByMonth: Record<string, number> = {};
-    items.forEach(item => {
+    completedItems.forEach(item => {
       const date = new Date(item.watchDate || item.endDate || item.dateAdded);
       const key = date.toLocaleString('default', { month: 'short' });
       activityByMonth[key] = (activityByMonth[key] || 0) + 1;
@@ -53,8 +61,13 @@ export const Analytics: React.FC<AnalyticsProps> = ({ items, challenges, onAddCh
     }));
 
     // 4. Summary Stats
-    const totalItems = items.length;
-    const avgRating = (items.reduce((acc, item) => acc + item.rating, 0) / totalItems).toFixed(1);
+    const totalItems = completedItems.length;
+    
+    const ratedItems = completedItems.filter(item => item.rating > 0);
+    const avgRating = ratedItems.length > 0 
+      ? (ratedItems.reduce((acc, item) => acc + item.rating, 0) / ratedItems.length).toFixed(1)
+      : '0.0';
+      
     const topType = [...typeDistribution].sort((a, b) => b.value - a.value)[0]?.name || 'N/A';
 
     return {
@@ -72,6 +85,12 @@ export const Analytics: React.FC<AnalyticsProps> = ({ items, challenges, onAddCh
       const challengeItems = items.filter(item => {
         if (item.type !== challenge.mediaType) return false;
         if (item.status !== MediaStatus.COMPLETED) return false;
+        
+        if ([MediaType.SERIES, MediaType.BOOK, MediaType.GAME].includes(item.type)) {
+          if (!item.endDate) return false;
+        } else {
+          if (!item.watchDate) return false;
+        }
         
         const completionDate = new Date(item.watchDate || item.endDate || item.dateAdded);
         const start = new Date(challenge.startDate);
