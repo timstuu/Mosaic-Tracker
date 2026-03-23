@@ -167,12 +167,24 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                         <label className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-widest mb-2">
                           <Calendar size={12} /> Watch Date
                         </label>
-                        <input
-                          type="date"
-                          value={watchDate}
-                          onChange={(e) => setWatchDate(e.target.value)}
-                          className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
-                        />
+                        <div className="flex gap-2 items-center">
+                          <input
+                            type="date"
+                            value={watchDate}
+                            onChange={(e) => setWatchDate(e.target.value)}
+                            className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
+                          />
+                          {watchDate && (
+                            <button
+                              type="button"
+                              onClick={() => setWatchDate('')}
+                              className="p-3 text-zinc-500 hover:text-white bg-app-bg border border-white/10 rounded-xl transition-colors shrink-0"
+                              title="Clear date"
+                            >
+                              <X size={16} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     )}
                     <div className={type === MediaType.SERIES ? "col-span-2" : ""}>
@@ -196,23 +208,47 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                       <label className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-widest mb-2">
                         <Calendar size={12} /> Start Date
                       </label>
-                      <input
-                        type="date"
-                        value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
-                        className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
-                      />
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="date"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
+                        />
+                        {startDate && (
+                          <button
+                            type="button"
+                            onClick={() => setStartDate('')}
+                            className="p-3 text-zinc-500 hover:text-white bg-app-bg border border-white/10 rounded-xl transition-colors shrink-0"
+                            title="Clear date"
+                          >
+                            <X size={16} />
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <div>
                       <label className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-widest mb-2">
                         <Calendar size={12} /> End Date
                       </label>
-                      <input
-                        type="date"
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                        className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
-                      />
+                      <div className="flex gap-2 items-center">
+                        <input
+                          type="date"
+                          value={endDate}
+                          onChange={(e) => setEndDate(e.target.value)}
+                          className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
+                        />
+                        {endDate && (
+                          <button
+                            type="button"
+                            onClick={() => setEndDate('')}
+                            className="p-3 text-zinc-500 hover:text-white bg-app-bg border border-white/10 rounded-xl transition-colors shrink-0"
+                            title="Clear date"
+                          >
+                            <X size={16} />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}

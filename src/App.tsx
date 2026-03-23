@@ -8,6 +8,7 @@ import { supabase, isSupabaseConfigured } from './lib/supabase';
 import { Auth } from './components/Auth';
 import { Layout } from './components/Layout';
 import { QuickAdd } from './components/QuickAdd';
+import { ActiveMediaShelf } from './components/ActiveMediaShelf';
 import { MosaicLaunch } from './components/MosaicLaunch';
 import { Analytics } from './components/Analytics';
 import { BacklogAdd } from './components/BacklogAdd';
@@ -378,76 +379,91 @@ export default function App() {
     );
   };
 
-  const renderTracker = () => (
-    <div className="max-w-4xl mx-auto">
-      <AnimatePresence>
-        {isSearchVisible && (
-          <motion.div 
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="mb-8 overflow-hidden"
-          >
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-300" />
-              <input
-                autoFocus
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search your media library..."
-                className="w-full bg-secondary-accent border border-white/10 rounded-2xl pl-12 pr-12 py-4 text-white focus:outline-none focus:border-primary-accent/50 transition-all"
-              />
-              {searchQuery && (
-                <button 
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded-full text-zinc-300"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
+  const renderTracker = () => {
+    const activeItems = filteredAndSortedItems.filter(
+      i => i.status === MediaStatus.COMPLETED && i.startDate && !i.endDate && [MediaType.SERIES, MediaType.BOOK, MediaType.GAME].includes(i.type)
+    );
+    
+    const completedItems = filteredAndSortedItems.filter(
+      i => i.status === MediaStatus.COMPLETED && !(i.startDate && !i.endDate && [MediaType.SERIES, MediaType.BOOK, MediaType.GAME].includes(i.type))
+    );
+
+    return (
+      <div className="max-w-4xl mx-auto">
+        <AnimatePresence>
+          {isSearchVisible && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="mb-8 overflow-hidden"
+            >
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-300" />
+                <input
+                  autoFocus
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search your media library..."
+                  className="w-full bg-secondary-accent border border-white/10 rounded-2xl pl-12 pr-12 py-4 text-white focus:outline-none focus:border-primary-accent/50 transition-all"
+                />
+                {searchQuery && (
+                  <button 
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded-full text-zinc-300"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <QuickAdd onSave={handleSaveMedia} />
+
+        <ActiveMediaShelf 
+          items={activeItems} 
+          onItemClick={setEditingItem} 
+        />
+
+        <div className="flex justify-end mb-4 mt-8">
+          <div className="bg-secondary-accent/50 p-1 rounded-xl border border-white/5 flex gap-1">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors ${viewMode === 'list' ? 'bg-primary-accent text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+            >
+              List
+            </button>
+            <button
+              onClick={() => setViewMode('mosaic')}
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors ${viewMode === 'mosaic' ? 'bg-primary-accent text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+            >
+              Mosaic
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-secondary-accent/30 rounded-[2.5rem] border border-white/5 overflow-hidden backdrop-blur-sm mb-24">
+          {loading ? (
+            <div className="p-12 text-center text-zinc-300 animate-pulse">Loading your library...</div>
+          ) : completedItems.length === 0 ? (
+            <div className="p-24 text-center">
+              <p className="text-zinc-300">No completed entries found.</p>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <QuickAdd onSave={handleSaveMedia} />
-
-      <div className="flex justify-end mb-4 mt-8">
-        <div className="bg-secondary-accent/50 p-1 rounded-xl border border-white/5 flex gap-1">
-          <button
-            onClick={() => setViewMode('list')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors ${viewMode === 'list' ? 'bg-primary-accent text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-          >
-            List
-          </button>
-          <button
-            onClick={() => setViewMode('mosaic')}
-            className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors ${viewMode === 'mosaic' ? 'bg-primary-accent text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-          >
-            Mosaic
-          </button>
+          ) : viewMode === 'mosaic' ? (
+            <MosaicView 
+              items={completedItems} 
+              onItemClick={setEditingItem} 
+            />
+          ) : (
+            renderList(completedItems)
+          )}
         </div>
       </div>
-
-      <div className="bg-secondary-accent/30 rounded-[2.5rem] border border-white/5 overflow-hidden backdrop-blur-sm mb-24">
-        {loading ? (
-          <div className="p-12 text-center text-zinc-300 animate-pulse">Loading your library...</div>
-        ) : filteredAndSortedItems.filter(i => i.status === MediaStatus.COMPLETED).length === 0 ? (
-          <div className="p-24 text-center">
-            <p className="text-zinc-300">No completed entries found.</p>
-          </div>
-        ) : viewMode === 'mosaic' ? (
-          <MosaicView 
-            items={filteredAndSortedItems.filter(i => i.status === MediaStatus.COMPLETED)} 
-            onItemClick={setEditingItem} 
-          />
-        ) : (
-          renderList(filteredAndSortedItems.filter(i => i.status === MediaStatus.COMPLETED))
-        )}
-      </div>
-    </div>
-  );
+    );
+  };
 
   const renderBacklog = () => {
     const backlogItems = mediaItems

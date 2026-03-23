@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Film, Tv, Book, Gamepad2, Star, Plus } from 'lucide-react';
+import { X, Film, Tv, Book, Gamepad2, Star, Plus } from 'lucide-react';
 import { MediaType, MediaItem, MediaStatus } from '../types';
 import { fetchMediaPoster } from '../services/tmdbService';
 import { fetchBookCover } from '../services/bookService';
@@ -14,8 +14,8 @@ export const QuickAdd: React.FC<QuickAddProps> = ({ onSave }) => {
   const [title, setTitle] = useState('');
   const [rating, setRating] = useState(0);
   const [watchDate, setWatchDate] = useState(new Date().toISOString().split('T')[0]);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState('');
   const [platform, setPlatform] = useState('');
   const [consoleName, setConsoleName] = useState('');
   const [tags, setTags] = useState('');
@@ -126,12 +126,24 @@ export const QuickAdd: React.FC<QuickAddProps> = ({ onSave }) => {
           {(isVisual && type !== MediaType.SERIES) && (
             <div className="flex-1 space-y-2">
               <label className="block text-[10px] font-bold text-white uppercase tracking-widest ml-1">Watch Date</label>
-              <input
-                type="date"
-                value={watchDate}
-                onChange={(e) => setWatchDate(e.target.value)}
-                className="w-full bg-app-bg border border-white/5 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
-              />
+              <div className="flex gap-2 items-center">
+                <input
+                  type="date"
+                  value={watchDate}
+                  onChange={(e) => setWatchDate(e.target.value)}
+                  className="w-full bg-app-bg border border-white/5 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
+                />
+                {watchDate && (
+                  <button
+                    type="button"
+                    onClick={() => setWatchDate('')}
+                    className="p-2 text-zinc-500 hover:text-white bg-app-bg border border-white/5 rounded-xl transition-colors shrink-0"
+                    title="Clear date"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -139,21 +151,45 @@ export const QuickAdd: React.FC<QuickAddProps> = ({ onSave }) => {
             <>
               <div className="flex-1 space-y-2">
                 <label className="block text-[10px] font-bold text-white uppercase tracking-widest ml-1">Start Date</label>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full bg-app-bg border border-white/5 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
-                />
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full bg-app-bg border border-white/5 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
+                  />
+                  {startDate && (
+                    <button
+                      type="button"
+                      onClick={() => setStartDate('')}
+                      className="p-2 text-zinc-500 hover:text-white bg-app-bg border border-white/5 rounded-xl transition-colors shrink-0"
+                      title="Clear date"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="flex-1 space-y-2">
                 <label className="block text-[10px] font-bold text-white uppercase tracking-widest ml-1">End Date</label>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full bg-app-bg border border-white/5 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
-                />
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full bg-app-bg border border-white/5 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
+                  />
+                  {endDate && (
+                    <button
+                      type="button"
+                      onClick={() => setEndDate('')}
+                      className="p-2 text-zinc-500 hover:text-white bg-app-bg border border-white/5 rounded-xl transition-colors shrink-0"
+                      title="Clear date"
+                    >
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
               </div>
             </>
           )}
