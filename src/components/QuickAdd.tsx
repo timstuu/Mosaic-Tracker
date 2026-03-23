@@ -21,6 +21,9 @@ export const QuickAdd: React.FC<QuickAddProps> = ({ onSave }) => {
   const [tags, setTags] = useState('');
   const [isbn, setIsbn] = useState('');
 
+  const isVisual = [MediaType.MOVIE, MediaType.SERIES, MediaType.DOCUMENTARY].includes(type);
+  const isInteractive = [MediaType.BOOK, MediaType.GAME, MediaType.SERIES].includes(type);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title) return;
@@ -34,11 +37,19 @@ export const QuickAdd: React.FC<QuickAddProps> = ({ onSave }) => {
       imageUrl = await fetchGameCover(title);
     }
 
+    let finalStatus = MediaStatus.COMPLETED;
+    if (isVisual && type !== MediaType.SERIES) {
+      if (!watchDate) finalStatus = MediaStatus.PLANNED;
+    } else if (isInteractive) {
+      if (!endDate && !startDate) finalStatus = MediaStatus.PLANNED;
+      else if (!endDate && startDate) finalStatus = MediaStatus.ACTIVE;
+    }
+
     const newItem: Partial<MediaItem> = {
       id: crypto.randomUUID(),
       title,
       type,
-      status: MediaStatus.COMPLETED,
+      status: finalStatus,
       rating,
       dateAdded: new Date().toISOString(),
       watchDate: [MediaType.MOVIE, MediaType.DOCUMENTARY].includes(type) ? watchDate : undefined,
@@ -60,9 +71,6 @@ export const QuickAdd: React.FC<QuickAddProps> = ({ onSave }) => {
     setTags('');
     setIsbn('');
   };
-
-  const isVisual = [MediaType.MOVIE, MediaType.SERIES, MediaType.DOCUMENTARY].includes(type);
-  const isInteractive = [MediaType.BOOK, MediaType.GAME, MediaType.SERIES].includes(type);
 
   return (
     <div className="bg-secondary-accent border border-white/5 rounded-3xl p-6 shadow-xl shadow-black/20 mb-12">

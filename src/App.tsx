@@ -85,11 +85,15 @@ export default function App() {
         if (!status) {
           if (item.watchDate || item.endDate) {
             status = MediaStatus.COMPLETED;
+          } else if (item.startDate && !item.endDate) {
+            status = MediaStatus.ACTIVE;
           } else {
             status = MediaStatus.PLANNED;
           }
         } else if (status === MediaStatus.PLANNED && (item.watchDate || item.endDate)) {
           status = MediaStatus.COMPLETED;
+        } else if (item.startDate && !item.endDate && status !== MediaStatus.COMPLETED) {
+          status = MediaStatus.ACTIVE;
         }
         return { ...item, status };
       });
@@ -396,11 +400,11 @@ export default function App() {
 
   const renderTracker = () => {
     const activeItems = filteredAndSortedItems.filter(
-      i => i.status === MediaStatus.COMPLETED && i.startDate && !i.endDate && [MediaType.SERIES, MediaType.BOOK, MediaType.GAME].includes(i.type)
+      i => i.status === MediaStatus.ACTIVE && [MediaType.SERIES, MediaType.BOOK, MediaType.GAME].includes(i.type)
     );
     
     const completedItems = filteredAndSortedItems.filter(
-      i => i.status === MediaStatus.COMPLETED && !(i.startDate && !i.endDate && [MediaType.SERIES, MediaType.BOOK, MediaType.GAME].includes(i.type))
+      i => i.status === MediaStatus.COMPLETED
     );
 
     return (

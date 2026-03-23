@@ -7,8 +7,9 @@ export enum MediaType {
 }
 
 export enum MediaStatus {
-  COMPLETED = 'completed' ,
-  PLANNED = 'planned'
+  COMPLETED = 'completed',
+  PLANNED = 'planned',
+  ACTIVE = 'active'
 } 
 
 export interface MediaItem {

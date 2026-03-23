@@ -32,12 +32,30 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
   const isInteractiveMedia = [MediaType.BOOK, MediaType.GAME, MediaType.SERIES].includes(type);
 
   React.useEffect(() => {
-    if (isVisualMedia && watchDate && status !== MediaStatus.COMPLETED) {
-      setStatus(MediaStatus.COMPLETED);
-    } else if (isInteractiveMedia && endDate && status !== MediaStatus.COMPLETED) {
-      setStatus(MediaStatus.COMPLETED);
+    if (isVisualMedia) {
+      if (watchDate) {
+        setStatus(MediaStatus.COMPLETED);
+      } else if (type === MediaType.SERIES) {
+        if (endDate) {
+          setStatus(MediaStatus.COMPLETED);
+        } else if (startDate) {
+          setStatus(MediaStatus.ACTIVE);
+        } else {
+          setStatus(MediaStatus.PLANNED);
+        }
+      } else {
+        setStatus(MediaStatus.PLANNED);
+      }
+    } else if (isInteractiveMedia) {
+      if (endDate) {
+        setStatus(MediaStatus.COMPLETED);
+      } else if (startDate) {
+        setStatus(MediaStatus.ACTIVE);
+      } else {
+        setStatus(MediaStatus.PLANNED);
+      }
     }
-  }, [watchDate, endDate, isVisualMedia, isInteractiveMedia, status]);
+  }, [watchDate, startDate, endDate, isVisualMedia, isInteractiveMedia, type]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

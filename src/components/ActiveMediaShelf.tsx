@@ -10,7 +10,7 @@ interface ActiveMediaShelfProps {
 
 export const ActiveMediaShelf: React.FC<ActiveMediaShelfProps> = ({ items, onItemClick }) => {
   const activeItems = items.filter(
-    (item) => item.startDate && !item.endDate && [MediaType.SERIES, MediaType.BOOK, MediaType.GAME].includes(item.type)
+    (item) => [MediaType.SERIES, MediaType.BOOK, MediaType.GAME].includes(item.type)
   );
 
   if (activeItems.length === 0) return null;
