@@ -41,8 +41,7 @@ export const QuickAdd: React.FC<QuickAddProps> = ({ onSave }) => {
     if (isVisual && type !== MediaType.SERIES) {
       if (!watchDate) finalStatus = MediaStatus.PLANNED;
     } else if (isInteractive) {
-      if (!endDate && !startDate) finalStatus = MediaStatus.PLANNED;
-      else if (!endDate && startDate) finalStatus = MediaStatus.ACTIVE;
+      if (!endDate) finalStatus = MediaStatus.PLANNED;
     }
 
     const newItem: Partial<MediaItem> = {
@@ -52,9 +51,9 @@ export const QuickAdd: React.FC<QuickAddProps> = ({ onSave }) => {
       status: finalStatus,
       rating,
       dateAdded: new Date().toISOString(),
-      watchDate: [MediaType.MOVIE, MediaType.DOCUMENTARY].includes(type) ? watchDate : undefined,
-      startDate: [MediaType.BOOK, MediaType.GAME, MediaType.SERIES].includes(type) ? startDate : undefined,
-      endDate: [MediaType.BOOK, MediaType.GAME, MediaType.SERIES].includes(type) ? endDate : undefined,
+      watchDate: [MediaType.MOVIE, MediaType.DOCUMENTARY].includes(type) ? (watchDate || undefined) : undefined,
+      startDate: [MediaType.BOOK, MediaType.GAME, MediaType.SERIES].includes(type) ? (startDate || undefined) : undefined,
+      endDate: [MediaType.BOOK, MediaType.GAME, MediaType.SERIES].includes(type) ? (endDate || undefined) : undefined,
       platform: [MediaType.MOVIE, MediaType.SERIES, MediaType.DOCUMENTARY].includes(type) ? platform : undefined,
       console: type === MediaType.GAME ? consoleName : undefined,
       tags: [MediaType.MOVIE, MediaType.SERIES, MediaType.DOCUMENTARY, MediaType.GAME, MediaType.BOOK].includes(type) ? tags : undefined,
@@ -68,6 +67,8 @@ export const QuickAdd: React.FC<QuickAddProps> = ({ onSave }) => {
     setPlatform('');
     setConsoleName('');
     setStartDate('');
+    setEndDate('');
+    setWatchDate('');
     setTags('');
     setIsbn('');
   };
