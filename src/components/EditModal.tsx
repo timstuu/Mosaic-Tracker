@@ -28,6 +28,17 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
   const [link, setLink] = useState(item.link || '');
   const [isbn, setIsbn] = useState(item.isbn || '');
 
+  const isVisualMedia = [MediaType.MOVIE, MediaType.SERIES, MediaType.DOCUMENTARY].includes(type);
+  const isInteractiveMedia = [MediaType.BOOK, MediaType.GAME, MediaType.SERIES].includes(type);
+
+  React.useEffect(() => {
+    if (isVisualMedia && watchDate && status !== MediaStatus.COMPLETED) {
+      setStatus(MediaStatus.COMPLETED);
+    } else if (isInteractiveMedia && endDate && status !== MediaStatus.COMPLETED) {
+      setStatus(MediaStatus.COMPLETED);
+    }
+  }, [watchDate, endDate, isVisualMedia, isInteractiveMedia, status]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -63,9 +74,6 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
     };
     onSave(updatedItem);
   };
-
-  const isVisualMedia = [MediaType.MOVIE, MediaType.SERIES, MediaType.DOCUMENTARY].includes(type);
-  const isInteractiveMedia = [MediaType.BOOK, MediaType.GAME, MediaType.SERIES].includes(type);
 
   return (
     <motion.div 

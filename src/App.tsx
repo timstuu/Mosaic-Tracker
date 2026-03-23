@@ -79,7 +79,22 @@ export default function App() {
         .select('*');
       
       if (error) throw error;
-      setMediaItems(data || []);
+      
+      const normalizedData = (data || []).map(item => {
+        let status = item.status;
+        if (!status) {
+          if (item.watchDate || item.endDate) {
+            status = MediaStatus.COMPLETED;
+          } else {
+            status = MediaStatus.PLANNED;
+          }
+        } else if (status === MediaStatus.PLANNED && (item.watchDate || item.endDate)) {
+          status = MediaStatus.COMPLETED;
+        }
+        return { ...item, status };
+      });
+      
+      setMediaItems(normalizedData);
     } catch (error) {
       console.error('Failed to fetch media:', error);
     } finally {
