@@ -161,7 +161,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                 className="space-y-4"
               >
                 {isVisualMedia && (
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {type !== MediaType.SERIES && (
                       <div>
                         <label className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-widest mb-2">
@@ -191,7 +191,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                 )}
 
                 {isInteractiveMedia && (
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-widest mb-2">
                         <Calendar size={12} /> Start Date
