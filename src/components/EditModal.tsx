@@ -77,7 +77,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
       ...item,
       title,
       type,
-      status: status === MediaStatus.ACTIVE ? MediaStatus.PLANNED : status,
+      status,
       rating,
       notes,
       tags,

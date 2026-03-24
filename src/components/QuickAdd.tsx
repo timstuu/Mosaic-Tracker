@@ -41,7 +41,8 @@ export const QuickAdd: React.FC<QuickAddProps> = ({ onSave }) => {
     if (isVisual && type !== MediaType.SERIES) {
       if (!watchDate) finalStatus = MediaStatus.PLANNED;
     } else if (isInteractive) {
-      if (!endDate) finalStatus = MediaStatus.PLANNED;
+      if (!endDate && !startDate) finalStatus = MediaStatus.PLANNED;
+      else if (!endDate && startDate) finalStatus = MediaStatus.ACTIVE;
     }
 
     const newItem: Partial<MediaItem> = {

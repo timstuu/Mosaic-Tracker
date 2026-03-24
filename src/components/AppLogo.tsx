@@ -21,7 +21,7 @@ export const AppLogo: React.FC<AppLogoProps> = ({ className = "h-10 w-10", size 
 
   return (
     <img 
-      src="./apple-touch-icon.png" 
+      src="/icons/apple-touch-icon.png" 
       alt="App Logo" 
       width={size} 
       height={size} 

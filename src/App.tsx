@@ -81,7 +81,7 @@ export default function App() {
       if (error) throw error;
       
       const normalizedData = (data || []).map(item => {
-        let status = item.status;
+        let status = item.status?.toLowerCase().trim();
         if (!status) {
           if (item.watchDate || item.endDate) {
             status = MediaStatus.COMPLETED;
@@ -400,7 +400,7 @@ export default function App() {
 
   const renderTracker = () => {
     const activeItems = filteredAndSortedItems.filter(
-      i => i.status === MediaStatus.ACTIVE && [MediaType.SERIES, MediaType.BOOK, MediaType.GAME].includes(i.type)
+      i => i.status === MediaStatus.ACTIVE
     );
     
     const completedItems = filteredAndSortedItems.filter(
