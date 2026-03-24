@@ -13,11 +13,16 @@ export const fetchGameCover = async (title: string): Promise<string | undefined>
     console.log(`Fetching game cover for: "${title}" via Edge Function...`);
 
     const { data, error } = await supabase.functions.invoke('get-game-cover', {
-      body: { game_title: title }
+      body: { gameTitle: title }
     });
 
     if (error) {
-      console.error('Error calling get-game-cover function:', error);
+      // Check if it's a fetch error (usually means not deployed or CORS issue)
+      if (error.message === 'Failed to send a request to the Edge Function') {
+        console.error('Edge Function not reachable. Please ensure you have deployed it using: supabase functions deploy get-game-cover');
+      } else {
+        console.error('Error calling get-game-cover function:', error.message || error);
+      }
       return undefined;
     }
 
