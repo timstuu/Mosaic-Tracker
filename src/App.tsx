@@ -617,16 +617,15 @@ export default function App() {
                         >
                           <Edit2 size={16} />
                         </button>
-                        {item.link && (
-                          <a 
-                            href={item.link} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="p-2 text-zinc-300 hover:text-primary-accent transition-colors"
-                          >
-                            <ExternalLink size={16} />
-                          </a>
-                        )}
+                        <a 
+                          href={item.link || `https://www.google.com/search?q=${encodeURIComponent([item.title, item.console, item.platform, item.isbn].filter(Boolean).join(', '))}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="p-2 text-zinc-300 hover:text-primary-accent transition-colors"
+                          title={item.link ? "Open Link" : "Search Google"}
+                        >
+                          <ExternalLink size={16} />
+                        </a>
                         <button 
                           onClick={() => handleMoveToTracker(item)}
                           className="p-2 text-zinc-300 hover:text-emerald-500 transition-colors"
