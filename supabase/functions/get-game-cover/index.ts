@@ -9,6 +9,14 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Check if there is a body before trying to parse it
+    if (!req.body) {
+      return new Response(JSON.stringify({ error: 'Request body is missing' }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400,
+      })
+    }
+
     const { gameTitle } = await req.json()
 
     if (!gameTitle) {

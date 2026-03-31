@@ -40,6 +40,11 @@ export default function App() {
   const [expandedBacklogTypes, setExpandedBacklogTypes] = useState<Set<MediaType>>(new Set());
 
   useEffect(() => {
+    setIsSearchVisible(false);
+    setSearchQuery('');
+  }, [activePage]);
+
+  useEffect(() => {
     if (isSupabaseConfigured) {
       // Get initial session
       supabase.auth.getSession().then(({ data: { session } }: any) => {
@@ -270,8 +275,24 @@ export default function App() {
   };
 
   const filteredAndSortedItems = useMemo(() => {
+    if (!searchQuery.trim()) {
+      return mediaItems.sort((a, b) => {
+        const dateA = new Date(a.watchDate || a.endDate || a.dateAdded).getTime();
+        const dateB = new Date(b.watchDate || b.endDate || b.dateAdded).getTime();
+        return dateB - dateA;
+      });
+    }
+
+    const query = searchQuery.toLowerCase();
     return mediaItems
-      .filter(item => item.title.toLowerCase().includes(searchQuery.toLowerCase()))
+      .filter(item => {
+        const titleMatch = item.title?.toLowerCase().includes(query);
+        const tagMatch = item.tags?.toLowerCase().includes(query);
+        const platformMatch = item.platform?.toLowerCase().includes(query);
+        const consoleMatch = item.console?.toLowerCase().includes(query);
+        const notesMatch = item.notes?.toLowerCase().includes(query);
+        return titleMatch || tagMatch || platformMatch || consoleMatch || notesMatch;
+      })
       .sort((a, b) => {
         const dateA = new Date(a.watchDate || a.endDate || a.dateAdded).getTime();
         const dateB = new Date(b.watchDate || b.endDate || b.dateAdded).getTime();
@@ -398,6 +419,49 @@ export default function App() {
     );
   };
 
+  const renderSearchResults = () => {
+    return (
+      <div className="max-w-4xl mx-auto px-4 pb-24">
+        <div className="mb-8">
+          <h1 className="text-3xl font-serif italic text-white mb-2">Search Results</h1>
+          <p className="text-zinc-300 text-sm">Found {filteredAndSortedItems.length} items matching "{searchQuery}"</p>
+        </div>
+
+        <div className="flex justify-end mb-4">
+          <div className="bg-secondary-accent/50 p-1 rounded-xl border border-white/5 flex gap-1">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors ${viewMode === 'list' ? 'bg-primary-accent text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+            >
+              List
+            </button>
+            <button
+              onClick={() => setViewMode('mosaic')}
+              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors ${viewMode === 'mosaic' ? 'bg-primary-accent text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+            >
+              Mosaic
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-secondary-accent/30 rounded-[2.5rem] border border-white/5 overflow-hidden backdrop-blur-sm mb-24">
+          {filteredAndSortedItems.length === 0 ? (
+            <div className="p-24 text-center">
+              <p className="text-zinc-300">No entries found for "{searchQuery}".</p>
+            </div>
+          ) : viewMode === 'mosaic' ? (
+            <MosaicView 
+              items={filteredAndSortedItems} 
+              onItemClick={setEditingItem} 
+            />
+          ) : (
+            renderList(filteredAndSortedItems)
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const renderTracker = () => {
     const activeItems = filteredAndSortedItems.filter(
       i => i.status === MediaStatus.ACTIVE
@@ -409,37 +473,6 @@ export default function App() {
 
     return (
       <div className="max-w-4xl mx-auto">
-        <AnimatePresence>
-          {isSearchVisible && (
-            <motion.div 
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              className="mb-8 overflow-hidden"
-            >
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-300" />
-                <input
-                  autoFocus
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search your media library..."
-                  className="w-full bg-secondary-accent border border-white/10 rounded-2xl pl-12 pr-12 py-4 text-white focus:outline-none focus:border-primary-accent/50 transition-all"
-                />
-                {searchQuery && (
-                  <button 
-                    onClick={() => setSearchQuery('')}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded-full text-zinc-300"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         <QuickAdd onSave={handleSaveMedia} />
 
         <ActiveMediaShelf 
@@ -775,10 +808,47 @@ export default function App() {
 
   return (
     <Layout onSearchToggle={() => setIsSearchVisible(!isSearchVisible)}>
-      {activePage === 'tracker' && renderTracker()}
-      {activePage === 'backlog' && renderBacklog()}
-      {activePage === 'analytics' && renderAnalytics()}
-      {activePage === 'settings' && renderSettings()}
+      <div className="max-w-4xl mx-auto px-4">
+        <AnimatePresence>
+          {isSearchVisible && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="mb-8 overflow-hidden"
+            >
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-300" />
+                <input
+                  autoFocus
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search your media library..."
+                  className="w-full bg-secondary-accent border border-white/10 rounded-2xl pl-12 pr-12 py-4 text-white focus:outline-none focus:border-primary-accent/50 transition-all"
+                />
+                {searchQuery && (
+                  <button 
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded-full text-zinc-300"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {searchQuery.trim() ? renderSearchResults() : (
+        <>
+          {activePage === 'tracker' && renderTracker()}
+          {activePage === 'backlog' && renderBacklog()}
+          {activePage === 'analytics' && renderAnalytics()}
+          {activePage === 'settings' && renderSettings()}
+        </>
+      )}
 
       <ImportModal 
         isOpen={isImportModalOpen} 
