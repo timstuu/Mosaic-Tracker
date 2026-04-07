@@ -8,9 +8,10 @@ interface LayoutProps {
   onSearchToggle: () => void;
   onRefresh?: () => Promise<void>;
   isRefreshing?: boolean;
+  bottomNav?: React.ReactNode;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ children, onSearchToggle, onRefresh, isRefreshing }) => {
+export const Layout: React.FC<LayoutProps> = ({ children, onSearchToggle, onRefresh, isRefreshing, bottomNav }) => {
   const content = (
     <main className="pt-24 pb-12 px-4 max-w-7xl mx-auto min-h-screen">
       {children}
@@ -74,6 +75,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, onSearchToggle, onRefr
           </div>
         </div>
       </footer>
+
+      {/* Bottom Navigation */}
+      {bottomNav}
     </div>
   );
 };
