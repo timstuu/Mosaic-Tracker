@@ -38,21 +38,11 @@ export default function App() {
   const [isChallengeModalOpen, setIsChallengeModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'mosaic'>('mosaic');
   const [expandedBacklogTypes, setExpandedBacklogTypes] = useState<Set<MediaType>>(new Set());
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     setIsSearchVisible(false);
     setSearchQuery('');
   }, [activePage]);
-
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await Promise.all([
-      fetchMedia(),
-      fetchChallenges()
-    ]);
-    setIsRefreshing(false);
-  };
 
   useEffect(() => {
     if (isSupabaseConfigured) {
@@ -286,7 +276,7 @@ export default function App() {
 
   const filteredAndSortedItems = useMemo(() => {
     if (!searchQuery.trim()) {
-      return [...mediaItems].sort((a, b) => {
+      return mediaItems.sort((a, b) => {
         const dateA = new Date(a.watchDate || a.endDate || a.dateAdded).getTime();
         const dateB = new Date(b.watchDate || b.endDate || b.dateAdded).getTime();
         return dateB - dateA;
@@ -294,7 +284,7 @@ export default function App() {
     }
 
     const query = searchQuery.toLowerCase();
-    return [...mediaItems]
+    return mediaItems
       .filter(item => {
         const titleMatch = item.title?.toLowerCase().includes(query);
         const tagMatch = item.tags?.toLowerCase().includes(query);
@@ -816,48 +806,7 @@ export default function App() {
   }
 
   return (
-    <Layout 
-      onSearchToggle={() => setIsSearchVisible(!isSearchVisible)}
-      onRefresh={['tracker', 'backlog', 'analytics'].includes(activePage) ? handleRefresh : undefined}
-      isRefreshing={isRefreshing}
-      bottomNav={
-        <nav className="fixed bottom-0 left-0 right-0 h-20 bg-secondary-accent/90 backdrop-blur-xl border-t border-white/5 z-50 flex items-center justify-center px-6 pb-safe">
-          <div className="flex items-center justify-between w-full max-w-md">
-            <button
-              onClick={() => setActivePage('tracker')}
-              className={`flex flex-col items-center gap-1 transition-all ${activePage === 'tracker' ? 'text-primary-accent' : 'text-zinc-300 hover:text-white'}`}
-            >
-              <LayoutGrid className={`w-6 h-6 ${activePage === 'tracker' ? 'scale-110' : ''} transition-transform`} />
-              <span className="text-[10px] font-bold uppercase tracking-widest">Tracker</span>
-            </button>
-
-            <button
-              onClick={() => setActivePage('backlog')}
-              className={`flex flex-col items-center gap-1 transition-all ${activePage === 'backlog' ? 'text-primary-accent' : 'text-zinc-300 hover:text-white'}`}
-            >
-              <Bookmark className={`w-6 h-6 ${activePage === 'backlog' ? 'scale-110' : ''} transition-transform`} />
-              <span className="text-[10px] font-bold uppercase tracking-widest">Backlog</span>
-            </button>
-
-            <button
-              onClick={() => setActivePage('analytics')}
-              className={`flex flex-col items-center gap-1 transition-all ${activePage === 'analytics' ? 'text-primary-accent' : 'text-zinc-300 hover:text-white'}`}
-            >
-              <BarChart3 className={`w-6 h-6 ${activePage === 'analytics' ? 'scale-110' : ''} transition-transform`} />
-              <span className="text-[10px] font-bold uppercase tracking-widest">Analytics</span>
-            </button>
-
-            <button
-              onClick={() => setActivePage('settings')}
-              className={`flex flex-col items-center gap-1 transition-all ${activePage === 'settings' ? 'text-primary-accent' : 'text-zinc-300 hover:text-white'}`}
-            >
-              <SettingsIcon className={`w-6 h-6 ${activePage === 'settings' ? 'scale-110' : ''} transition-transform`} />
-              <span className="text-[10px] font-bold uppercase tracking-widest">Settings</span>
-            </button>
-          </div>
-        </nav>
-      }
-    >
+    <Layout onSearchToggle={() => setIsSearchVisible(!isSearchVisible)}>
       <div className="max-w-4xl mx-auto px-4">
         <AnimatePresence>
           {isSearchVisible && (
@@ -923,6 +872,43 @@ export default function App() {
         onClose={() => setIsChallengeModalOpen(false)}
         onSave={handleSaveChallenge}
       />
+
+      {/* Bottom Navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 h-20 bg-secondary-accent/90 backdrop-blur-xl border-t border-white/5 z-50 flex items-center justify-center px-6 pb-safe">
+        <div className="flex items-center justify-between w-full max-w-md">
+          <button
+            onClick={() => setActivePage('tracker')}
+            className={`flex flex-col items-center gap-1 transition-all ${activePage === 'tracker' ? 'text-primary-accent' : 'text-zinc-300 hover:text-white'}`}
+          >
+            <LayoutGrid className={`w-6 h-6 ${activePage === 'tracker' ? 'scale-110' : ''} transition-transform`} />
+            <span className="text-[10px] font-bold uppercase tracking-widest">Tracker</span>
+          </button>
+
+          <button
+            onClick={() => setActivePage('backlog')}
+            className={`flex flex-col items-center gap-1 transition-all ${activePage === 'backlog' ? 'text-primary-accent' : 'text-zinc-300 hover:text-white'}`}
+          >
+            <Bookmark className={`w-6 h-6 ${activePage === 'backlog' ? 'scale-110' : ''} transition-transform`} />
+            <span className="text-[10px] font-bold uppercase tracking-widest">Backlog</span>
+          </button>
+
+          <button
+            onClick={() => setActivePage('analytics')}
+            className={`flex flex-col items-center gap-1 transition-all ${activePage === 'analytics' ? 'text-primary-accent' : 'text-zinc-300 hover:text-white'}`}
+          >
+            <BarChart3 className={`w-6 h-6 ${activePage === 'analytics' ? 'scale-110' : ''} transition-transform`} />
+            <span className="text-[10px] font-bold uppercase tracking-widest">Analytics</span>
+          </button>
+
+          <button
+            onClick={() => setActivePage('settings')}
+            className={`flex flex-col items-center gap-1 transition-all ${activePage === 'settings' ? 'text-primary-accent' : 'text-zinc-300 hover:text-white'}`}
+          >
+            <SettingsIcon className={`w-6 h-6 ${activePage === 'settings' ? 'scale-110' : ''} transition-transform`} />
+            <span className="text-[10px] font-bold uppercase tracking-widest">Settings</span>
+          </button>
+        </div>
+      </nav>
 
       <MosaicLaunch 
         isVisible={showLaunch} 
