@@ -276,7 +276,7 @@ export default function App() {
 
   const filteredAndSortedItems = useMemo(() => {
     if (!searchQuery.trim()) {
-      return mediaItems.sort((a, b) => {
+      return [...mediaItems].sort((a, b) => {
         const dateA = new Date(a.watchDate || a.endDate || a.dateAdded).getTime();
         const dateB = new Date(b.watchDate || b.endDate || b.dateAdded).getTime();
         return dateB - dateA;
@@ -284,7 +284,7 @@ export default function App() {
     }
 
     const query = searchQuery.toLowerCase();
-    return mediaItems
+    return [...mediaItems]
       .filter(item => {
         const titleMatch = item.title?.toLowerCase().includes(query);
         const tagMatch = item.tags?.toLowerCase().includes(query);
