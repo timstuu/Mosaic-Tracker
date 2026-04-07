@@ -38,11 +38,21 @@ export default function App() {
   const [isChallengeModalOpen, setIsChallengeModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'mosaic'>('mosaic');
   const [expandedBacklogTypes, setExpandedBacklogTypes] = useState<Set<MediaType>>(new Set());
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     setIsSearchVisible(false);
     setSearchQuery('');
   }, [activePage]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await Promise.all([
+      fetchMedia(),
+      fetchChallenges()
+    ]);
+    setIsRefreshing(false);
+  };
 
   useEffect(() => {
     if (isSupabaseConfigured) {
@@ -806,7 +816,11 @@ export default function App() {
   }
 
   return (
-    <Layout onSearchToggle={() => setIsSearchVisible(!isSearchVisible)}>
+    <Layout 
+      onSearchToggle={() => setIsSearchVisible(!isSearchVisible)}
+      onRefresh={['tracker', 'backlog', 'analytics'].includes(activePage) ? handleRefresh : undefined}
+      isRefreshing={isRefreshing}
+    >
       <div className="max-w-4xl mx-auto px-4">
         <AnimatePresence>
           {isSearchVisible && (
