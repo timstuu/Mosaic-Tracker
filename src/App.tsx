@@ -38,6 +38,7 @@ export default function App() {
   const [isChallengeModalOpen, setIsChallengeModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'mosaic'>('mosaic');
   const [expandedBacklogTypes, setExpandedBacklogTypes] = useState<Set<MediaType>>(new Set());
+  const [dataWarning, setDataWarning] = useState<string | null>(null);
 
   useEffect(() => {
     setIsSearchVisible(false);
@@ -79,14 +80,38 @@ export default function App() {
   const fetchMedia = async () => {
     if (!isSupabaseConfigured) return;
     try {
-      const { data, error } = await supabase
-        .from('media_items')
-        .select('*');
+      console.log('Fetching media items for user:', session?.user?.id);
+      let query = supabase.from('media_items').select('*');
+      
+      if (session?.user?.id) {
+        query = query.eq('user_id', session.user.id);
+      }
+
+      const { data, error } = await query;
       
       if (error) throw error;
       
-      const normalizedData = (data || []).map(item => {
-        let status = item.status?.toLowerCase().trim();
+      console.log("Rohdaten von Supabase:", data);
+      console.log(`Received ${data?.length || 0} items from Supabase.`);
+      
+      if (!data || data.length === 0) {
+        setDataWarning("Keine Daten von Supabase empfangen. Bitte überprüfe, ob Einträge in der Datenbank vorhanden sind und die Filter (z.B. user_id) korrekt sind.");
+      } else {
+        setDataWarning(null);
+      }
+      
+      const normalizedData = (data || [])
+        .filter(item => {
+          if (!item || !item.title) return false;
+          // Strict user ID check to filter out orphaned data
+          if (session?.user?.id && item.user_id !== session.user.id) {
+            console.warn('Filtered out orphaned item:', item.id);
+            return false;
+          }
+          return true;
+        })
+        .map(item => {
+          let status = item.status?.toLowerCase().trim();
         if (!status) {
           if (item.watchDate || item.endDate) {
             status = MediaStatus.COMPLETED;
@@ -198,11 +223,18 @@ export default function App() {
       return;
     }
     try {
+      const itemToSave = {
+        ...item,
+        user_id: session?.user?.id
+      };
+      console.log('Saving new media item:', itemToSave);
+      
       const { error } = await supabase
         .from('media_items')
-        .insert(item);
+        .insert(itemToSave);
       
       if (error) throw error;
+      console.log('Successfully saved media item. Refetching...');
       setShowLaunch(true);
       fetchMedia();
     } catch (error) {
@@ -213,12 +245,15 @@ export default function App() {
   const handleUpdateMedia = async (item: Partial<MediaItem>) => {
     if (!isSupabaseConfigured) return;
     try {
+      console.log('Updating media item:', item.id);
       const { error } = await supabase
         .from('media_items')
         .update(item)
-        .eq('id', item.id);
+        .eq('id', item.id)
+        .eq('user_id', session?.user?.id); // Ensure we only update user's own items
       
       if (error) throw error;
+      console.log('Successfully updated media item. Refetching...');
       setEditingItem(null);
       fetchMedia();
     } catch (error) {
@@ -233,7 +268,8 @@ export default function App() {
       const { error } = await supabase
         .from('media_items')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('user_id', session?.user?.id); // Ensure we only delete user's own items
       
       if (error) throw error;
       console.log('Successfully deleted media');
@@ -315,105 +351,112 @@ export default function App() {
         </div>
 
         {items.map((item, index) => {
-          const date = new Date(item.watchDate || item.endDate || item.dateAdded);
-          const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-          
-          const isFirstInMonth = currentMonthYear !== lastMonthYear;
-          lastMonthYear = currentMonthYear;
+          try {
+            if (!item || !item.title) return null;
 
-          return (
-            <React.Fragment key={item.id}>
-              {/* Mobile Month Divider */}
-              {isFirstInMonth && (
-                <div className="md:hidden px-4 py-2 bg-white/5 border-y border-white/[0.05] text-[10px] font-bold text-primary-accent uppercase tracking-widest">
-                  {currentMonthYear}
-                </div>
-              )}
+            const date = new Date(item.watchDate || item.endDate || item.dateAdded);
+            const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+            
+            const isFirstInMonth = currentMonthYear !== lastMonthYear;
+            lastMonthYear = currentMonthYear;
 
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex md:grid md:grid-cols-[140px_60px_48px_1fr_120px] md:items-center px-4 md:px-6 py-4 hover:bg-white/5 transition-colors group border-b border-white/[0.02] gap-4 md:gap-0"
-              >
-                {/* Desktop Period Column */}
-                <div className="hidden md:block text-sm font-serif italic text-primary-accent">
-                  {isFirstInMonth ? currentMonthYear : ""}
-                </div>
-                
-                {/* Day Column */}
-                <div className="text-sm font-mono text-white w-8 md:w-auto shrink-0">
-                  {date.getDate().toString().padStart(2, '0')}
-                </div>
+            return (
+              <React.Fragment key={item.id || `fallback-${index}`}>
+                {/* Mobile Month Divider */}
+                {isFirstInMonth && (
+                  <div className="md:hidden px-4 py-2 bg-white/5 border-y border-white/[0.05] text-[10px] font-bold text-primary-accent uppercase tracking-widest">
+                    {currentMonthYear}
+                  </div>
+                )}
 
-                {/* Cover Art Thumbnail */}
-                <div className="flex items-center justify-center shrink-0">
-                  {item.imageUrl ? (
-                    <img 
-                      src={item.imageUrl} 
-                      alt={item.title} 
-                      referrerPolicy="no-referrer"
-                      className="w-8 h-12 md:w-8 md:h-12 object-cover rounded shadow-lg shadow-black/40 border border-white/10"
-                    />
-                  ) : (
-                    <div className="w-8 h-12 bg-white/5 rounded border border-white/5 flex items-center justify-center text-zinc-300">
-                      {item.type === MediaType.MOVIE || item.type === MediaType.DOCUMENTARY ? <Film size={14} /> : 
-                       item.type === MediaType.SERIES ? <Tv size={14} /> :
-                       item.type === MediaType.BOOK ? <Book size={14} /> : <Gamepad2 size={14} />}
-                    </div>
-                  )}
-                </div>
-                
-                {/* Title & Rating Container */}
-                <div className="flex-1 md:contents">
-                  <div className="flex flex-col md:flex-row md:items-start md:py-1 gap-1 md:gap-4">
-                    <div className="text-sm font-medium text-white group-hover:text-primary-accent transition-colors whitespace-normal break-words">
-                      {item.title}
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {(item.startDate && item.endDate) && (
-                        <div className="text-[10px] text-white font-mono whitespace-nowrap">
-                          {new Date(item.startDate).toLocaleDateString()} – {new Date(item.endDate).toLocaleDateString()}
-                        </div>
-                      )}
-                      {(item.platform || item.console) && (
-                        <span className="text-[10px] text-zinc-500 uppercase tracking-widest">
-                          {item.platform || item.console}
-                        </span>
-                      )}
-                      {item.tags && (
-                        <div className="flex flex-wrap gap-1">
-                          {item.tags.split(',').map((tag, i) => (
-                            <span key={i} className="px-1.5 py-0.5 bg-primary-accent/10 border border-primary-accent/20 rounded text-[8px] font-bold text-primary-accent uppercase tracking-widest">
-                              {tag.trim()}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="flex md:grid md:grid-cols-[140px_60px_48px_1fr_120px] md:items-center px-4 md:px-6 py-4 hover:bg-white/5 transition-colors group border-b border-white/[0.02] gap-4 md:gap-0"
+                >
+                  {/* Desktop Period Column */}
+                  <div className="hidden md:block text-sm font-serif italic text-primary-accent">
+                    {isFirstInMonth ? currentMonthYear : ""}
+                  </div>
+                  
+                  {/* Day Column */}
+                  <div className="text-sm font-mono text-white w-8 md:w-auto shrink-0">
+                    {date.getDate().toString().padStart(2, '0')}
                   </div>
 
-                  <div className="flex md:justify-end items-center gap-2 mt-1 md:mt-0">
-                    <div className="flex gap-0.5">
-                      {[...Array(5)].map((_, i) => (
-                        <Star 
-                          key={i} 
-                          size={10}
-                          className={`${i < item.rating ? 'fill-primary-accent text-primary-accent' : 'text-zinc-700'}`} 
-                        />
-                      ))}
-                    </div>
-                    <button 
-                      onClick={() => setEditingItem(item)}
-                      className="p-1.5 text-zinc-400 hover:text-primary-accent transition-colors"
-                      title="Edit entry"
-                    >
-                      <Edit2 size={12} />
-                    </button>
+                  {/* Cover Art Thumbnail */}
+                  <div className="flex items-center justify-center shrink-0">
+                    {item.imageUrl ? (
+                      <img 
+                        src={item.imageUrl} 
+                        alt={item.title} 
+                        referrerPolicy="no-referrer"
+                        className="w-8 h-12 md:w-8 md:h-12 object-cover rounded shadow-lg shadow-black/40 border border-white/10"
+                      />
+                    ) : (
+                      <div className="w-8 h-12 bg-white/5 rounded border border-white/5 flex items-center justify-center text-zinc-300">
+                        {item.type === MediaType.MOVIE || item.type === MediaType.DOCUMENTARY ? <Film size={14} /> : 
+                         item.type === MediaType.SERIES ? <Tv size={14} /> :
+                         item.type === MediaType.BOOK ? <Book size={14} /> : <Gamepad2 size={14} />}
+                      </div>
+                    )}
                   </div>
-                </div>
-              </motion.div>
-            </React.Fragment>
-          );
+                  
+                  {/* Title & Rating Container */}
+                  <div className="flex-1 md:contents">
+                    <div className="flex flex-col md:flex-row md:items-start md:py-1 gap-1 md:gap-4">
+                      <div className="text-sm font-medium text-white group-hover:text-primary-accent transition-colors whitespace-normal break-words">
+                        {item.title}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {(item.startDate && item.endDate) && (
+                          <div className="text-[10px] text-white font-mono whitespace-nowrap">
+                            {new Date(item.startDate).toLocaleDateString()} – {new Date(item.endDate).toLocaleDateString()}
+                          </div>
+                        )}
+                        {(item.platform || item.console) && (
+                          <span className="text-[10px] text-zinc-500 uppercase tracking-widest">
+                            {item.platform || item.console}
+                          </span>
+                        )}
+                        {item.tags && (
+                          <div className="flex flex-wrap gap-1">
+                            {item.tags.split(',').map((tag, i) => (
+                              <span key={i} className="px-1.5 py-0.5 bg-primary-accent/10 border border-primary-accent/20 rounded text-[8px] font-bold text-primary-accent uppercase tracking-widest">
+                                {tag.trim()}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex md:justify-end items-center gap-2 mt-1 md:mt-0">
+                      <div className="flex gap-0.5">
+                        {[...Array(5)].map((_, i) => (
+                          <Star 
+                            key={i} 
+                            size={10}
+                            className={`${i < (item.rating || 0) ? 'fill-primary-accent text-primary-accent' : 'text-zinc-700'}`} 
+                          />
+                        ))}
+                      </div>
+                      <button 
+                        onClick={() => setEditingItem(item)}
+                        className="p-1.5 text-zinc-400 hover:text-primary-accent transition-colors"
+                        title="Edit entry"
+                      >
+                        <Edit2 size={12} />
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              </React.Fragment>
+            );
+          } catch (err) {
+            console.error('Error rendering list item:', item, err);
+            return null;
+          }
         })}
       </div>
     );
@@ -473,6 +516,11 @@ export default function App() {
 
     return (
       <div className="max-w-4xl mx-auto">
+        {dataWarning && (
+          <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-4 rounded-xl mb-8 text-sm">
+            {dataWarning}
+          </div>
+        )}
         <QuickAdd onSave={handleSaveMedia} />
 
         <ActiveMediaShelf 
@@ -553,6 +601,12 @@ export default function App() {
           <p className="text-zinc-300 text-sm">Media you're planning to experience later.</p>
         </div>
 
+        {dataWarning && (
+          <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-4 rounded-xl mb-8 text-sm">
+            {dataWarning}
+          </div>
+        )}
+
         <BacklogAdd onSave={handleSaveMedia} />
 
         <div className="space-y-8">
@@ -575,67 +629,75 @@ export default function App() {
                 </div>
                 
                 <div className="bg-secondary-accent/30 rounded-3xl border border-white/5 overflow-hidden backdrop-blur-sm">
-                  {displayedItems.map((item) => (
-                    <div key={item.id} className="flex items-center gap-4 px-6 py-4 border-b border-white/[0.02] last:border-0 group hover:bg-white/5 transition-colors">
-                      {/* Thumbnail */}
-                      <div className="flex-shrink-0">
-                        {item.imageUrl ? (
-                          <img 
-                            src={item.imageUrl} 
-                            alt={item.title} 
-                            referrerPolicy="no-referrer"
-                            className="w-10 h-14 object-cover rounded shadow-lg border border-white/10"
-                          />
-                        ) : (
-                          <div className="w-10 h-14 bg-white/5 rounded border border-white/5 flex items-center justify-center text-zinc-300">
-                            {typeIcons[item.type]}
+                  {displayedItems.map((item) => {
+                    try {
+                      if (!item || !item.title) return null;
+                      return (
+                        <div key={item.id} className="flex items-center gap-4 px-6 py-4 border-b border-white/[0.02] last:border-0 group hover:bg-white/5 transition-colors">
+                          {/* Thumbnail */}
+                          <div className="flex-shrink-0">
+                            {item.imageUrl ? (
+                              <img 
+                                src={item.imageUrl} 
+                                alt={item.title} 
+                                referrerPolicy="no-referrer"
+                                className="w-10 h-14 object-cover rounded shadow-lg border border-white/10"
+                              />
+                            ) : (
+                              <div className="w-10 h-14 bg-white/5 rounded border border-white/5 flex items-center justify-center text-zinc-300">
+                                {typeIcons[item.type]}
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
 
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-white group-hover:text-primary-accent transition-colors truncate">
-                          {item.title}
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-white group-hover:text-primary-accent transition-colors truncate">
+                              {item.title}
+                            </div>
+                            <div className="flex items-center gap-3 mt-1">
+                              {(item.platform || item.console) && (
+                                <span className="text-[10px] text-zinc-500 uppercase tracking-widest">
+                                  {item.platform || item.console}
+                                </span>
+                              )}
+                              <span className="text-[10px] text-zinc-600 font-mono">
+                                Added {new Date(item.dateAdded).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+                          
+                          <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => setEditingItem(item)}
+                              className="p-2 text-zinc-300 hover:text-primary-accent transition-colors"
+                              title="Edit entry"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                            <a 
+                              href={item.link || `https://www.google.com/search?q=${encodeURIComponent([item.title, item.console, item.platform, item.isbn].filter(Boolean).join(', '))}`} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="p-2 text-zinc-300 hover:text-primary-accent transition-colors"
+                              title={item.link ? "Open Link" : "Search Google"}
+                            >
+                              <ExternalLink size={16} />
+                            </a>
+                            <button 
+                              onClick={() => handleMoveToTracker(item)}
+                              className="p-2 text-zinc-300 hover:text-emerald-500 transition-colors"
+                              title="Mark as Tracked"
+                            >
+                              <Plus size={16} />
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-3 mt-1">
-                          {(item.platform || item.console) && (
-                            <span className="text-[10px] text-zinc-500 uppercase tracking-widest">
-                              {item.platform || item.console}
-                            </span>
-                          )}
-                          <span className="text-[10px] text-zinc-600 font-mono">
-                            Added {new Date(item.dateAdded).toLocaleDateString()}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <button 
-                          onClick={() => setEditingItem(item)}
-                          className="p-2 text-zinc-300 hover:text-primary-accent transition-colors"
-                          title="Edit entry"
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                        <a 
-                          href={item.link || `https://www.google.com/search?q=${encodeURIComponent([item.title, item.console, item.platform, item.isbn].filter(Boolean).join(', '))}`} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="p-2 text-zinc-300 hover:text-primary-accent transition-colors"
-                          title={item.link ? "Open Link" : "Search Google"}
-                        >
-                          <ExternalLink size={16} />
-                        </a>
-                        <button 
-                          onClick={() => handleMoveToTracker(item)}
-                          className="p-2 text-zinc-300 hover:text-emerald-500 transition-colors"
-                          title="Mark as Tracked"
-                        >
-                          <Plus size={16} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                      );
+                    } catch (err) {
+                      console.error('Error rendering backlog item:', item, err);
+                      return null;
+                    }
+                  })}
                   
                   {hasMore && (
                     <button

@@ -1,13 +1,23 @@
 import React from 'react';
-import { Search } from 'lucide-react';
+import { Search, RefreshCw } from 'lucide-react';
 import { AppLogo } from './AppLogo';
+import { PullToRefresh } from './PullToRefresh';
 
 interface LayoutProps {
   children: React.ReactNode;
   onSearchToggle: () => void;
+  onRefresh?: () => Promise<void>;
+  isRefreshing?: boolean;
+  bottomNav?: React.ReactNode;
 }
 
-export const Layout: React.FC<LayoutProps> = ({ children, onSearchToggle }) => {
+export const Layout: React.FC<LayoutProps> = ({ children, onSearchToggle, onRefresh, isRefreshing, bottomNav }) => {
+  const content = (
+    <main className="pt-24 pb-12 px-4 max-w-7xl mx-auto min-h-screen">
+      {children}
+    </main>
+  );
+
   return (
     <div className="min-h-screen bg-app-bg text-zinc-100 font-sans selection:bg-primary-accent/30">
       {/* Navigation */}
@@ -22,19 +32,34 @@ export const Layout: React.FC<LayoutProps> = ({ children, onSearchToggle }) => {
             <span className="font-semibold text-xl tracking-tight text-white">Mosaic</span>
           </div>
 
-          <button 
-            onClick={onSearchToggle}
-            className="p-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-full transition-all"
-          >
-            <Search className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {onRefresh && (
+              <button 
+                onClick={onRefresh}
+                className="p-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-full transition-all hidden sm:block"
+                title="Refresh data"
+              >
+                <RefreshCw className={`w-5 h-5 ${isRefreshing ? 'animate-spin text-primary-accent' : ''}`} />
+              </button>
+            )}
+            <button 
+              onClick={onSearchToggle}
+              className="p-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-full transition-all"
+            >
+              <Search className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       </nav>
 
       {/* Main Content */}
-      <main className="pt-24 pb-12 px-4 max-w-7xl mx-auto">
-        {children}
-      </main>
+      {onRefresh ? (
+        <PullToRefresh onRefresh={onRefresh}>
+          {content}
+        </PullToRefresh>
+      ) : (
+        content
+      )}
 
       {/* Footer */}
       <footer className="border-t border-white/5 py-12 bg-app-bg">
@@ -50,6 +75,9 @@ export const Layout: React.FC<LayoutProps> = ({ children, onSearchToggle }) => {
           </div>
         </div>
       </footer>
+
+      {/* Bottom Navigation */}
+      {bottomNav}
     </div>
   );
 };

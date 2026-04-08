@@ -27,44 +27,52 @@ export const MosaicView: React.FC<MosaicViewProps> = ({ items, onItemClick }) =>
             {monthYear}
           </div>
           <div className="grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-4">
-            {monthItems.map((item) => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="relative aspect-[2/3] rounded-lg overflow-hidden group cursor-pointer shadow-lg shadow-black/40 border border-white/10"
-                onClick={() => onItemClick(item)}
-              >
-                {item.imageUrl ? (
-                  <img 
-                    src={item.imageUrl} 
-                    alt={item.title} 
-                    referrerPolicy="no-referrer"
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-white/5 flex flex-col items-center justify-center text-zinc-500 p-2 text-center">
-                    {item.type === MediaType.MOVIE || item.type === MediaType.DOCUMENTARY ? <Film size={24} className="mb-2" /> : 
-                     item.type === MediaType.SERIES ? <Tv size={24} className="mb-2" /> :
-                     item.type === MediaType.BOOK ? <Book size={24} className="mb-2" /> : <Gamepad2 size={24} className="mb-2" />}
-                    <span className="text-[10px] uppercase tracking-widest line-clamp-2">{item.title}</span>
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
-                  <div className="w-full flex justify-between items-center">
-                    <div className="flex gap-0.5">
-                      {[...Array(5)].map((_, i) => (
-                        <Star 
-                          key={i} 
-                          size={8}
-                          className={`${i < item.rating ? 'fill-primary-accent text-primary-accent' : 'text-zinc-700'}`} 
-                        />
-                      ))}
+            {monthItems.map((item) => {
+              try {
+                if (!item || !item.title) return null;
+                return (
+                  <motion.div
+                    key={item.id}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="relative aspect-[2/3] rounded-lg overflow-hidden group cursor-pointer shadow-lg shadow-black/40 border border-white/10"
+                    onClick={() => onItemClick(item)}
+                  >
+                    {item.imageUrl ? (
+                      <img 
+                        src={item.imageUrl} 
+                        alt={item.title} 
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-white/5 flex flex-col items-center justify-center text-zinc-500 p-2 text-center">
+                        {item.type === MediaType.MOVIE || item.type === MediaType.DOCUMENTARY ? <Film size={24} className="mb-2" /> : 
+                         item.type === MediaType.SERIES ? <Tv size={24} className="mb-2" /> :
+                         item.type === MediaType.BOOK ? <Book size={24} className="mb-2" /> : <Gamepad2 size={24} className="mb-2" />}
+                        <span className="text-[10px] uppercase tracking-widest line-clamp-2">{item.title}</span>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+                      <div className="w-full flex justify-between items-center">
+                        <div className="flex gap-0.5">
+                          {[...Array(5)].map((_, i) => (
+                            <Star 
+                              key={i} 
+                              size={8}
+                              className={`${i < (item.rating || 0) ? 'fill-primary-accent text-primary-accent' : 'text-zinc-700'}`} 
+                            />
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+                  </motion.div>
+                );
+              } catch (err) {
+                console.error('Error rendering mosaic item:', item, err);
+                return null;
+              }
+            })}
           </div>
         </div>
       ))}
