@@ -87,7 +87,7 @@ export const ActiveMediaShelf: React.FC<ActiveMediaShelfProps> = ({ items, onIte
               </motion.div>
             );
           } catch (err) {
-            console.error('Error rendering active item:', item, err);
+            console.error("Error rendering item in ActiveMediaShelf:", item, err);
             return null;
           }
         })}

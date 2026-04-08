@@ -38,7 +38,6 @@ export default function App() {
   const [isChallengeModalOpen, setIsChallengeModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'mosaic'>('mosaic');
   const [expandedBacklogTypes, setExpandedBacklogTypes] = useState<Set<MediaType>>(new Set());
-  const [dataWarning, setDataWarning] = useState<string | null>(null);
 
   useEffect(() => {
     setIsSearchVisible(false);
@@ -80,38 +79,22 @@ export default function App() {
   const fetchMedia = async () => {
     if (!isSupabaseConfigured) return;
     try {
-      console.log('Fetching media items for user:', session?.user?.id);
-      let query = supabase.from('media_items').select('*');
-      
-      if (session?.user?.id) {
-        query = query.eq('user_id', session.user.id);
-      }
+      const { data: { session } } = await supabase.auth.getSession();
+      const currentUserId = session?.user?.id;
 
-      const { data, error } = await query;
+      const { data, error } = await supabase
+        .from('media_items')
+        .select('*');
       
       if (error) throw error;
       
-      console.log("Rohdaten von Supabase:", data);
-      console.log(`Received ${data?.length || 0} items from Supabase.`);
+      const filteredData = (data || []).filter(item => {
+        if (!currentUserId) return false;
+        return item.user_id === currentUserId;
+      });
       
-      if (!data || data.length === 0) {
-        setDataWarning("Keine Daten von Supabase empfangen. Bitte überprüfe, ob Einträge in der Datenbank vorhanden sind und die Filter (z.B. user_id) korrekt sind.");
-      } else {
-        setDataWarning(null);
-      }
-      
-      const normalizedData = (data || [])
-        .filter(item => {
-          if (!item || !item.title) return false;
-          // Strict user ID check to filter out orphaned data
-          if (session?.user?.id && item.user_id !== session.user.id) {
-            console.warn('Filtered out orphaned item:', item.id);
-            return false;
-          }
-          return true;
-        })
-        .map(item => {
-          let status = item.status?.toLowerCase().trim();
+      const normalizedData = filteredData.map(item => {
+        let status = item.status?.toLowerCase().trim();
         if (!status) {
           if (item.watchDate || item.endDate) {
             status = MediaStatus.COMPLETED;
@@ -223,18 +206,11 @@ export default function App() {
       return;
     }
     try {
-      const itemToSave = {
-        ...item,
-        user_id: session?.user?.id
-      };
-      console.log('Saving new media item:', itemToSave);
-      
       const { error } = await supabase
         .from('media_items')
-        .insert(itemToSave);
+        .insert(item);
       
       if (error) throw error;
-      console.log('Successfully saved media item. Refetching...');
       setShowLaunch(true);
       fetchMedia();
     } catch (error) {
@@ -245,15 +221,12 @@ export default function App() {
   const handleUpdateMedia = async (item: Partial<MediaItem>) => {
     if (!isSupabaseConfigured) return;
     try {
-      console.log('Updating media item:', item.id);
       const { error } = await supabase
         .from('media_items')
         .update(item)
-        .eq('id', item.id)
-        .eq('user_id', session?.user?.id); // Ensure we only update user's own items
+        .eq('id', item.id);
       
       if (error) throw error;
-      console.log('Successfully updated media item. Refetching...');
       setEditingItem(null);
       fetchMedia();
     } catch (error) {
@@ -268,8 +241,7 @@ export default function App() {
       const { error } = await supabase
         .from('media_items')
         .delete()
-        .eq('id', id)
-        .eq('user_id', session?.user?.id); // Ensure we only delete user's own items
+        .eq('id', id);
       
       if (error) throw error;
       console.log('Successfully deleted media');
@@ -353,7 +325,6 @@ export default function App() {
         {items.map((item, index) => {
           try {
             if (!item || !item.title) return null;
-
             const date = new Date(item.watchDate || item.endDate || item.dateAdded);
             const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'numeric' });
             
@@ -361,7 +332,7 @@ export default function App() {
             lastMonthYear = currentMonthYear;
 
             return (
-              <React.Fragment key={item.id || `fallback-${index}`}>
+              <React.Fragment key={item.id}>
                 {/* Mobile Month Divider */}
                 {isFirstInMonth && (
                   <div className="md:hidden px-4 py-2 bg-white/5 border-y border-white/[0.05] text-[10px] font-bold text-primary-accent uppercase tracking-widest">
@@ -437,7 +408,7 @@ export default function App() {
                           <Star 
                             key={i} 
                             size={10}
-                            className={`${i < (item.rating || 0) ? 'fill-primary-accent text-primary-accent' : 'text-zinc-700'}`} 
+                            className={`${i < item.rating ? 'fill-primary-accent text-primary-accent' : 'text-zinc-700'}`} 
                           />
                         ))}
                       </div>
@@ -454,7 +425,7 @@ export default function App() {
               </React.Fragment>
             );
           } catch (err) {
-            console.error('Error rendering list item:', item, err);
+            console.error("Error rendering item in list:", item, err);
             return null;
           }
         })}
@@ -516,11 +487,6 @@ export default function App() {
 
     return (
       <div className="max-w-4xl mx-auto">
-        {dataWarning && (
-          <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-4 rounded-xl mb-8 text-sm">
-            {dataWarning}
-          </div>
-        )}
         <QuickAdd onSave={handleSaveMedia} />
 
         <ActiveMediaShelf 
@@ -600,12 +566,6 @@ export default function App() {
           <h1 className="text-3xl font-serif italic text-white mb-2">Backlog</h1>
           <p className="text-zinc-300 text-sm">Media you're planning to experience later.</p>
         </div>
-
-        {dataWarning && (
-          <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-4 rounded-xl mb-8 text-sm">
-            {dataWarning}
-          </div>
-        )}
 
         <BacklogAdd onSave={handleSaveMedia} />
 
@@ -694,7 +654,7 @@ export default function App() {
                         </div>
                       );
                     } catch (err) {
-                      console.error('Error rendering backlog item:', item, err);
+                      console.error("Error rendering item in backlog:", item, err);
                       return null;
                     }
                   })}

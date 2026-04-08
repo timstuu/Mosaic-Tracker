@@ -60,7 +60,7 @@ export const MosaicView: React.FC<MosaicViewProps> = ({ items, onItemClick }) =>
                             <Star 
                               key={i} 
                               size={8}
-                              className={`${i < (item.rating || 0) ? 'fill-primary-accent text-primary-accent' : 'text-zinc-700'}`} 
+                              className={`${i < item.rating ? 'fill-primary-accent text-primary-accent' : 'text-zinc-700'}`} 
                             />
                           ))}
                         </div>
@@ -69,7 +69,7 @@ export const MosaicView: React.FC<MosaicViewProps> = ({ items, onItemClick }) =>
                   </motion.div>
                 );
               } catch (err) {
-                console.error('Error rendering mosaic item:', item, err);
+                console.error("Error rendering item in MosaicView:", item, err);
                 return null;
               }
             })}
