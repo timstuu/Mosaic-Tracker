@@ -89,6 +89,10 @@ export default function App() {
       if (error) throw error;
       
       const filteredData = (data || []).filter(item => {
+        if (!item.user_id) {
+          console.warn(`Item ${item.id} (${item.title}) has no user_id and will be ignored.`);
+          return false;
+        }
         if (!currentUserId) return false;
         return item.user_id === currentUserId;
       });
@@ -206,9 +210,14 @@ export default function App() {
       return;
     }
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No user logged in');
+
+      const itemWithUser = { ...item, user_id: user.id };
+
       const { error } = await supabase
         .from('media_items')
-        .insert(item);
+        .insert(itemWithUser);
       
       if (error) throw error;
       setShowLaunch(true);
@@ -221,9 +230,14 @@ export default function App() {
   const handleUpdateMedia = async (item: Partial<MediaItem>) => {
     if (!isSupabaseConfigured) return;
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No user logged in');
+
+      const itemWithUser = { ...item, user_id: user.id };
+
       const { error } = await supabase
         .from('media_items')
-        .update(item)
+        .update(itemWithUser)
         .eq('id', item.id);
       
       if (error) throw error;
