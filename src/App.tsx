@@ -537,7 +537,9 @@ export default function App() {
       .sort((a, b) => new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime());
 
     const groupedBacklog = Object.values(MediaType).reduce((acc, type) => {
-      const items = backlogItems.filter(item => item.type === type);
+      const items = backlogItems
+        .filter(item => item.type === type)
+        .sort((a, b) => new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime());
       if (items.length > 0) acc[type] = items;
       return acc;
     }, {} as Record<MediaType, MediaItem[]>);
