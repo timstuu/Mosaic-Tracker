@@ -651,11 +651,11 @@ export default function App() {
                               <Edit2 size={16} />
                             </button>
                             <a 
-                              href={item.link || `https://www.google.com/search?q=${encodeURIComponent([item.title, item.console, item.platform, item.isbn].filter(Boolean).join(', '))}`} 
+                              href={item.link || ((item.type === MediaType.MOVIE || item.type === MediaType.SERIES || item.type === MediaType.DOCUMENTARY) ? 'https://www.werstreamt.es/filme-serien/?q=' + encodeURIComponent(item.title) : `https://www.google.com/search?q=${encodeURIComponent(item.title)}`)}
                               target="_blank" 
                               rel="noopener noreferrer"
                               className="p-2 text-zinc-300 hover:text-primary-accent transition-colors"
-                              title={item.link ? "Open Link" : "Search Google"}
+                              title={item.link ? "Open Link" : ((item.type === MediaType.MOVIE || item.type === MediaType.SERIES || item.type === MediaType.DOCUMENTARY) ? "Auf WerStreamt.es suchen" : "Auf Google suchen")}
                             >
                               <ExternalLink size={16} />
                             </a>
