@@ -27,11 +27,14 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
   const [tags, setTags] = useState(item.tags || '');
   const [link, setLink] = useState(item.link || '');
   const [isbn, setIsbn] = useState(item.isbn || '');
+  const [userModifiedStatus, setUserModifiedStatus] = useState(false);
 
   const isVisualMedia = [MediaType.MOVIE, MediaType.SERIES, MediaType.DOCUMENTARY].includes(type);
   const isInteractiveMedia = [MediaType.BOOK, MediaType.GAME, MediaType.SERIES].includes(type);
 
   React.useEffect(() => {
+    if (userModifiedStatus) return;
+    
     if (isVisualMedia) {
       if (watchDate) {
         setStatus(MediaStatus.COMPLETED);
@@ -156,7 +159,23 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
               />
             </div>
 
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-white uppercase tracking-widest mb-2">Status</label>
+                <select
+                  value={status}
+                  onChange={(e) => {
+                    setStatus(e.target.value as any);
+                    setUserModifiedStatus(true);
+                  }}
+                  className="w-full bg-app-bg border border-white/10 rounded-xl px-4 h-[50px] text-white focus:outline-none focus:border-primary-accent/50 transition-colors appearance-none"
+                >
+                  <option value={MediaStatus.COMPLETED}>Completed</option>
+                  <option value={MediaStatus.ACTIVE}>Active</option>
+                  <option value={MediaStatus.PLANNED}>Planned</option>
+                  <option value={MediaStatus.DNF}>DNF (Abgebrochen)</option>
+                </select>
+              </div>
               <div>
                 <label className="block text-xs font-bold text-white uppercase tracking-widest mb-2">Rating</label>
                 <div className="flex items-center h-[50px] gap-1 px-2">

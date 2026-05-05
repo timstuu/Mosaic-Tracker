@@ -20,6 +20,7 @@ export const QuickAdd: React.FC<QuickAddProps> = ({ onSave }) => {
   const [consoleName, setConsoleName] = useState('');
   const [tags, setTags] = useState('');
   const [isbn, setIsbn] = useState('');
+  const [explicitStatus, setExplicitStatus] = useState<MediaStatus | 'auto'>('auto');
 
   const isVisual = [MediaType.MOVIE, MediaType.SERIES, MediaType.DOCUMENTARY].includes(type);
   const isInteractive = [MediaType.BOOK, MediaType.GAME, MediaType.SERIES].includes(type);
@@ -38,11 +39,15 @@ export const QuickAdd: React.FC<QuickAddProps> = ({ onSave }) => {
     }
 
     let finalStatus = MediaStatus.COMPLETED;
-    if (isVisual && type !== MediaType.SERIES) {
-      if (!watchDate) finalStatus = MediaStatus.PLANNED;
-    } else if (isInteractive) {
-      if (!endDate && !startDate) finalStatus = MediaStatus.PLANNED;
-      else if (!endDate && startDate) finalStatus = MediaStatus.ACTIVE;
+    if (explicitStatus !== 'auto') {
+      finalStatus = explicitStatus;
+    } else {
+      if (isVisual && type !== MediaType.SERIES) {
+        if (!watchDate) finalStatus = MediaStatus.PLANNED;
+      } else if (isInteractive) {
+        if (!endDate && !startDate) finalStatus = MediaStatus.PLANNED;
+        else if (!endDate && startDate) finalStatus = MediaStatus.ACTIVE;
+      }
     }
 
     const newItem: Partial<MediaItem> = {
@@ -72,6 +77,7 @@ export const QuickAdd: React.FC<QuickAddProps> = ({ onSave }) => {
     setWatchDate('');
     setTags('');
     setIsbn('');
+    setExplicitStatus('auto');
   };
 
   return (
@@ -203,6 +209,22 @@ export const QuickAdd: React.FC<QuickAddProps> = ({ onSave }) => {
               </div>
             </>
           )}
+
+          <div className="w-full md:w-auto space-y-2">
+            <label className="block text-[10px] font-bold text-white uppercase tracking-widest ml-1">Status</label>
+            <select
+              value={explicitStatus}
+              onChange={(e) => setExplicitStatus(e.target.value as any)}
+              className="w-full bg-app-bg border border-white/5 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-primary-accent/50 transition-colors appearance-none"
+              style={{ minWidth: '120px' }}
+            >
+              <option value="auto">Auto (by Dates)</option>
+              <option value={MediaStatus.COMPLETED}>Completed</option>
+              <option value={MediaStatus.ACTIVE}>Active</option>
+              <option value={MediaStatus.PLANNED}>Planned</option>
+              <option value={MediaStatus.DNF}>DNF (Abgebrochen)</option>
+            </select>
+          </div>
 
           <div className="w-full md:w-auto space-y-2">
             <label className="block text-[10px] font-bold text-white uppercase tracking-widest ml-1">Rating</label>

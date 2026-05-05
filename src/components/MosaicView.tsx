@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { Star, Film, Tv, Book, Gamepad2 } from 'lucide-react';
-import { MediaItem, MediaType } from '../types';
+import { MediaItem, MediaType, MediaStatus } from '../types';
 
 interface MosaicViewProps {
   items: MediaItem[];
@@ -51,6 +51,11 @@ export const MosaicView: React.FC<MosaicViewProps> = ({ items, onItemClick }) =>
                          item.type === MediaType.SERIES ? <Tv size={24} className="mb-2" /> :
                          item.type === MediaType.BOOK ? <Book size={24} className="mb-2" /> : <Gamepad2 size={24} className="mb-2" />}
                         <span className="text-[10px] uppercase tracking-widest line-clamp-2">{item.title}</span>
+                      </div>
+                    )}
+                    {item.status === MediaStatus.DNF && (
+                      <div className="absolute top-1 -right-7 w-24 md:top-2 md:-right-8 md:w-28 bg-[#6b1e1e]/95 text-white text-[8px] md:text-[10px] font-bold text-center py-0.5 md:py-1 shadow-md rotate-45 z-10 pointer-events-none uppercase tracking-widest">
+                        DNF
                       </div>
                     )}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">

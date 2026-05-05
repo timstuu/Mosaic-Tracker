@@ -283,9 +283,17 @@ export default function App() {
       return;
     }
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No user logged in');
+
+      const itemsWithUser = items.map(item => ({
+        ...item,
+        user_id: user.id
+      }));
+
       const { error } = await supabase
         .from('media_items')
-        .insert(items);
+        .insert(itemsWithUser);
       
       if (error) throw error;
       fetchMedia();
@@ -294,6 +302,67 @@ export default function App() {
       console.error('Error importing library:', error);
       alert('Failed to import items. Please check the console for details.');
     }
+  };
+
+  const handleExportData = (status?: MediaStatus) => {
+    let itemsToExport = mediaItems;
+    let filename = 'library-export.json';
+
+    if (status) {
+      itemsToExport = mediaItems.filter(item => item.status === status);
+      filename = status === MediaStatus.COMPLETED ? 'tracker-history-export.json' : 'backlog-export.json';
+    }
+
+    if (itemsToExport.length === 0) {
+      alert('No data to export.');
+      return;
+    }
+
+    const cleanItems = itemsToExport.map(item => {
+      const { id, user_id, ...rest } = item as any;
+      return rest;
+    });
+
+    const jsonData = JSON.stringify(cleanItems, null, 2);
+    const blob = new Blob([jsonData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const jsonUploadRef = React.useRef<HTMLInputElement>(null);
+
+  const handleJsonImportChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        if (!Array.isArray(json)) throw new Error('Invalid format: Expected an array of items');
+        
+        const itemsToImport = json.map(item => ({
+          ...item,
+          id: crypto.randomUUID()
+        }));
+
+        await handleImport(itemsToImport);
+      } catch (err: any) {
+        alert('Failed to parse JSON file: ' + err.message);
+      }
+      
+      if (jsonUploadRef.current) {
+        jsonUploadRef.current.value = '';
+      }
+    };
+    reader.readAsText(file);
   };
 
   const filteredAndSortedItems = useMemo(() => {
@@ -496,7 +565,7 @@ export default function App() {
     );
     
     const completedItems = filteredAndSortedItems.filter(
-      i => i.status === MediaStatus.COMPLETED
+      i => i.status === MediaStatus.COMPLETED || i.status === MediaStatus.DNF
     );
 
     return (
@@ -731,9 +800,52 @@ export default function App() {
           </div>
           
           <div className="space-y-4">
-            <button className="w-full flex items-center justify-between p-4 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors group">
-              <span className="text-sm text-white group-hover:text-white">Export Library (JSON)</span>
+            <button 
+              onClick={() => handleExportData()}
+              className="w-full flex items-center justify-between p-4 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors group"
+            >
+              <div className="flex flex-col items-start">
+                <span className="text-sm text-white group-hover:text-white">Export Library (JSON)</span>
+                <span className="text-[10px] text-zinc-500 uppercase tracking-widest">All Data</span>
+              </div>
               <div className="text-white">→</div>
+            </button>
+            <button 
+              onClick={() => handleExportData(MediaStatus.COMPLETED)}
+              className="w-full flex items-center justify-between p-4 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors group"
+            >
+              <div className="flex flex-col items-start">
+                <span className="text-sm text-white group-hover:text-white">Export Tracker (JSON)</span>
+                <span className="text-[10px] text-zinc-500 uppercase tracking-widest">Completed Items</span>
+              </div>
+              <div className="text-white">→</div>
+            </button>
+            <button 
+              onClick={() => handleExportData(MediaStatus.PLANNED)}
+              className="w-full flex items-center justify-between p-4 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors group"
+            >
+              <div className="flex flex-col items-start">
+                <span className="text-sm text-white group-hover:text-white">Export Backlog (JSON)</span>
+                <span className="text-[10px] text-zinc-500 uppercase tracking-widest">Planned Items</span>
+              </div>
+              <div className="text-white">→</div>
+            </button>
+            <button 
+              onClick={() => jsonUploadRef.current?.click()}
+              className="w-full flex items-center justify-between p-4 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors group"
+            >
+              <div className="flex flex-col items-start">
+                <span className="text-sm text-white group-hover:text-white">Import Library (JSON)</span>
+                <span className="text-[10px] text-zinc-500 uppercase tracking-widest">Restore from export</span>
+              </div>
+              <div className="text-white">→</div>
+              <input 
+                type="file" 
+                ref={jsonUploadRef} 
+                onChange={handleJsonImportChange} 
+                accept=".json" 
+                className="hidden" 
+              />
             </button>
             <button 
               onClick={() => {
@@ -792,7 +904,7 @@ export default function App() {
             </div>
           </div>
           <div className="p-4 bg-white/5 rounded-2xl">
-            <p className="text-xs text-white italic">Your data is stored locally in your private database. No tracking or external analytics are used.</p>
+            <p className="text-xs text-white italic">Your data is stored securely in your private cloud database. You can export or clear your data at any time.</p>
           </div>
         </div>
 
