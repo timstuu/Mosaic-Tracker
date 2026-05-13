@@ -62,7 +62,7 @@ export const ChallengeModal: React.FC<ChallengeModalProps> = ({ isOpen, onClose,
               </div>
               <h2 className="text-xl font-serif italic text-white">New Challenge</h2>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full text-zinc-500 transition-colors">
+            <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full text-zinc-500 transition-colors" title="Close">
               <X size={20} />
             </button>
           </div>

@@ -100,7 +100,7 @@ export const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose, onImp
             <h2 className="text-xl font-serif italic text-white">
               {mode === 'watchlist' ? 'Import Watchlist' : 'Import Library'}
             </h2>
-            <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full text-zinc-500 transition-colors">
+            <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full text-zinc-500 transition-colors" title="Close">
               <X size={20} />
             </button>
           </div>

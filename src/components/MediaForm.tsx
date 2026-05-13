@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Film, Tv, Book, Gamepad2, Star, Calendar, Monitor, Cpu } from 'lucide-react';
-import { MediaType, MediaItem } from '../types';
+import { MediaType, MediaItem, MediaStatus } from '../types';
 
 interface MediaFormProps {
   onClose: () => void;
@@ -10,6 +10,7 @@ interface MediaFormProps {
 
 export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
   const [type, setType] = useState<MediaType>(MediaType.MOVIE);
+  const [status, setStatus] = useState<MediaStatus>(MediaStatus.PLANNED);
   const [title, setTitle] = useState('');
   const [rating, setRating] = useState(0);
   const [watchDate, setWatchDate] = useState('');
@@ -25,6 +26,7 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
       id: crypto.randomUUID(),
       title,
       type,
+      status,
       rating,
       dateAdded: new Date().toISOString(),
       notes,
@@ -54,7 +56,7 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
       >
         <div className="p-6 border-b border-white/5 flex justify-between items-center bg-secondary-accent/50">
           <h2 className="text-xl font-semibold text-white">Add New Media</h2>
-          <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full text-zinc-400 transition-colors">
+          <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full text-zinc-400 transition-colors" title="Close">
             <X size={20} />
           </button>
         </div>
@@ -96,6 +98,31 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
                 placeholder="Enter title..."
                 className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
               />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Status</label>
+              <div className="flex gap-2">
+                {[
+                  { id: MediaStatus.PLANNED, label: 'Planned' },
+                  { id: MediaStatus.ACTIVE, label: 'Active' },
+                  { id: MediaStatus.COMPLETED, label: 'Completed' },
+                  { id: MediaStatus.DNF, label: 'DNF' },
+                ].map((s) => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => setStatus(s.id)}
+                    className={`flex-1 py-2 px-1 rounded-xl border text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all ${
+                      status === s.id 
+                        ? 'bg-primary-accent border-primary-accent text-app-bg' 
+                        : 'bg-app-bg border-white/10 text-zinc-400 hover:border-primary-accent/50'
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 gap-4">

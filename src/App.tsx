@@ -367,15 +367,15 @@ export default function App() {
 
   const filteredAndSortedItems = useMemo(() => {
     if (!searchQuery.trim()) {
-      return mediaItems.sort((a, b) => {
-        const dateA = new Date(a.watchDate || a.endDate || a.dateAdded).getTime();
-        const dateB = new Date(b.watchDate || b.endDate || b.dateAdded).getTime();
+      return [...mediaItems].sort((a, b) => {
+        const dateA = new Date(a.watchDate || a.endDate || a.dateAdded || 0).getTime() || 0;
+        const dateB = new Date(b.watchDate || b.endDate || b.dateAdded || 0).getTime() || 0;
         return dateB - dateA;
       });
     }
 
     const query = searchQuery.toLowerCase();
-    return mediaItems
+    return [...mediaItems]
       .filter(item => {
         const titleMatch = item.title?.toLowerCase().includes(query);
         const tagMatch = item.tags?.toLowerCase().includes(query);
@@ -980,6 +980,7 @@ export default function App() {
                   <button 
                     onClick={() => setSearchQuery('')}
                     className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded-full text-zinc-300"
+                    title="Clear search"
                   >
                     <X className="w-4 h-4" />
                   </button>

@@ -88,11 +88,11 @@ export const QuickAdd: React.FC<QuickAddProps> = ({ onSave }) => {
           <label className="block text-[10px] font-bold text-white uppercase tracking-widest ml-1">What are you tracking?</label>
           <div className="flex bg-app-bg rounded-xl p-1 border border-white/5 w-fit">
             {[
-              { id: MediaType.MOVIE, icon: <Film size={14} /> },
-              { id: MediaType.SERIES, icon: <Tv size={14} /> },
-              { id: MediaType.DOCUMENTARY, icon: <Film size={14} /> },
-              { id: MediaType.BOOK, icon: <Book size={14} /> },
-              { id: MediaType.GAME, icon: <Gamepad2 size={14} /> },
+              { id: MediaType.MOVIE, icon: <Film size={14} />, label: 'Movie' },
+              { id: MediaType.SERIES, icon: <Tv size={14} />, label: 'Series' },
+              { id: MediaType.DOCUMENTARY, icon: <Film size={14} />, label: 'Documentary' },
+              { id: MediaType.BOOK, icon: <Book size={14} />, label: 'Book' },
+              { id: MediaType.GAME, icon: <Gamepad2 size={14} />, label: 'Game' },
             ].map((item) => (
               <button
                 key={item.id}
@@ -103,6 +103,7 @@ export const QuickAdd: React.FC<QuickAddProps> = ({ onSave }) => {
                     ? 'bg-primary-accent text-app-bg shadow-lg' 
                     : 'text-zinc-500 hover:text-white'
                 }`}
+                title={item.label}
               >
                 {item.icon}
               </button>

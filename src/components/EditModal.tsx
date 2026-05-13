@@ -87,7 +87,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
       imageUrl: currentImageUrl,
       link: link || undefined,
       isbn: type === MediaType.BOOK ? isbn : undefined,
-      watchDate: [MediaType.MOVIE, MediaType.DOCUMENTARY].includes(type) ? (watchDate || undefined) : undefined,
+      watchDate: [MediaType.MOVIE, MediaType.SERIES, MediaType.DOCUMENTARY].includes(type) ? (watchDate || undefined) : undefined,
       startDate: [MediaType.BOOK, MediaType.GAME, MediaType.SERIES].includes(type) ? (startDate || undefined) : undefined,
       endDate: [MediaType.BOOK, MediaType.GAME, MediaType.SERIES].includes(type) ? (endDate || undefined) : undefined,
       platform: [MediaType.MOVIE, MediaType.SERIES, MediaType.DOCUMENTARY].includes(type) ? platform : undefined,
@@ -112,7 +112,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
           <h2 className="text-xl font-semibold text-white">
             {item.status === MediaStatus.PLANNED && status === MediaStatus.COMPLETED ? 'Complete Tracking' : 'Edit Media'}
           </h2>
-          <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full text-zinc-400 transition-colors">
+          <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full text-zinc-400 transition-colors" title="Close">
             <X size={20} />
           </button>
         </div>

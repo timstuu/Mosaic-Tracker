@@ -327,6 +327,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ items, challenges, onAddCh
                       onDeleteChallenge(challenge.id);
                     }}
                     className="p-2 text-zinc-600 hover:text-red-500 transition-colors"
+                    title="Delete challenge"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -413,6 +414,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ items, challenges, onAddCh
                 <button
                   onClick={() => setSelectedChallenge(null)}
                   className="p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-full transition-colors"
+                  title="Close details"
                 >
                   <X size={20} />
                 </button>
