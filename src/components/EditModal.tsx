@@ -27,38 +27,9 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
   const [tags, setTags] = useState(item.tags || '');
   const [link, setLink] = useState(item.link || '');
   const [isbn, setIsbn] = useState(item.isbn || '');
-  const [userModifiedStatus, setUserModifiedStatus] = useState(false);
 
   const isVisualMedia = [MediaType.MOVIE, MediaType.SERIES, MediaType.DOCUMENTARY].includes(type);
   const isInteractiveMedia = [MediaType.BOOK, MediaType.GAME, MediaType.SERIES].includes(type);
-
-  React.useEffect(() => {
-    if (userModifiedStatus) return;
-    
-    if (isVisualMedia) {
-      if (watchDate) {
-        setStatus(MediaStatus.COMPLETED);
-      } else if (type === MediaType.SERIES) {
-        if (endDate) {
-          setStatus(MediaStatus.COMPLETED);
-        } else if (startDate) {
-          setStatus(MediaStatus.ACTIVE);
-        } else {
-          setStatus(MediaStatus.PLANNED);
-        }
-      } else {
-        setStatus(MediaStatus.PLANNED);
-      }
-    } else if (isInteractiveMedia) {
-      if (endDate) {
-        setStatus(MediaStatus.COMPLETED);
-      } else if (startDate) {
-        setStatus(MediaStatus.ACTIVE);
-      } else {
-        setStatus(MediaStatus.PLANNED);
-      }
-    }
-  }, [watchDate, startDate, endDate, isVisualMedia, isInteractiveMedia, type]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,10 +135,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                 <label className="block text-xs font-bold text-white uppercase tracking-widest mb-2">Status</label>
                 <select
                   value={status}
-                  onChange={(e) => {
-                    setStatus(e.target.value as any);
-                    setUserModifiedStatus(true);
-                  }}
+                  onChange={(e) => setStatus(e.target.value as any)}
                   className="w-full bg-app-bg border border-white/10 rounded-xl px-4 h-[50px] text-white focus:outline-none focus:border-primary-accent/50 transition-colors appearance-none"
                 >
                   <option value={MediaStatus.COMPLETED}>Completed</option>

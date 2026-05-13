@@ -369,7 +369,7 @@ export default function App() {
     if (!searchQuery.trim()) {
       return [...mediaItems].sort((a, b) => {
         const dateA = new Date(a.watchDate || a.endDate || a.dateAdded || 0).getTime() || 0;
-        const dateB = new Date(b.watchDate || b.endDate || b.dateAdded || 0).getTime() || 0;
+const dateB = new Date(b.watchDate || b.endDate || b.dateAdded || 0).getTime() || 0;
         return dateB - dateA;
       });
     }
@@ -408,9 +408,13 @@ export default function App() {
         {items.map((item, index) => {
           try {
             if (!item || !item.title) return null;
-            const date = new Date(item.watchDate || item.endDate || item.dateAdded);
-            const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'numeric' });
-            
+            const rawDate = item.watchDate || item.endDate || item.dateAdded;
+let date = new Date(rawDate || 0);
+if (isNaN(date.getTime())) {
+  date = new Date(0);
+}
+const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+                   
             const isFirstInMonth = currentMonthYear !== lastMonthYear;
             lastMonthYear = currentMonthYear;
 
@@ -617,12 +621,12 @@ export default function App() {
   const renderBacklog = () => {
     const backlogItems = mediaItems
       .filter(item => item.status === MediaStatus.PLANNED)
-      .sort((a, b) => new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime());
+      .sort((a, b) => new Date(b.dateAdded || 0).getTime() - new Date(a.dateAdded || 0).getTime());
 
     const groupedBacklog = Object.values(MediaType).reduce((acc, type) => {
       const items = backlogItems
         .filter(item => item.type === type)
-        .sort((a, b) => new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime());
+       .sort((a, b) => new Date(b.dateAdded || 0).getTime() - new Date(a.dateAdded || 0).getTime());
       if (items.length > 0) acc[type] = items;
       return acc;
     }, {} as Record<MediaType, MediaItem[]>);

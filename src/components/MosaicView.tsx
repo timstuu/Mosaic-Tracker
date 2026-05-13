@@ -10,7 +10,11 @@ interface MosaicViewProps {
 
 export const MosaicView: React.FC<MosaicViewProps> = ({ items, onItemClick }) => {
   const groupedItems = items.reduce((acc, item) => {
-    const date = new Date(item.watchDate || item.endDate || item.dateAdded);
+    const rawDate = item.watchDate || item.endDate || item.dateAdded;
+    let date = new Date(rawDate || 0);
+    if (isNaN(date.getTime())) {
+      date = new Date(0); // Sichert ab, falls das Datum komplett kaputt ist
+    }
     const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'numeric' });
     if (!acc[currentMonthYear]) {
       acc[currentMonthYear] = [];
