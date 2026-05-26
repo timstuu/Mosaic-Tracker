@@ -98,22 +98,12 @@ export default function App() {
       });
       
       const normalizedData = filteredData.map(item => {
-        let status = item.status?.toLowerCase().trim();
-        if (!status) {
-          if (item.watchDate || item.endDate) {
-            status = MediaStatus.COMPLETED;
-          } else if (item.startDate && !item.endDate) {
-            status = MediaStatus.ACTIVE;
-          } else {
-            status = MediaStatus.PLANNED;
-          }
-        } else if (status === MediaStatus.PLANNED && (item.watchDate || item.endDate)) {
-          status = MediaStatus.COMPLETED;
-        } else if (item.startDate && !item.endDate && status !== MediaStatus.COMPLETED) {
-          status = MediaStatus.ACTIVE;
-        }
-        return { ...item, status };
-      });
+  // Nimmt den Status exakt so, wie er aus der Datenbank kommt.
+  // Falls doch mal einer leer sein sollte, ist der Fallback 'planned'.
+  let status = item.status?.toLowerCase().trim() || MediaStatus.PLANNED;
+  
+  return { ...item, status };
+});
       
       setMediaItems(normalizedData);
     } catch (error) {
