@@ -16,7 +16,6 @@ interface EditModalProps {
 export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onDelete }) => {
   const [type, setType] = useState<MediaType>(item.type);
   const [title, setTitle] = useState(item.title);
-  const [status, setStatus] = useState<MediaStatus>(item.status);
   const [rating, setRating] = useState(item.rating || 0);
   const [watchDate, setWatchDate] = useState(item.watchDate || '');
   const [startDate, setStartDate] = useState(item.startDate || '');
@@ -27,9 +26,26 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
   const [tags, setTags] = useState(item.tags || '');
   const [link, setLink] = useState(item.link || '');
   const [isbn, setIsbn] = useState(item.isbn || '');
+  const [isDnf, setIsDnf] = useState(item.status === MediaStatus.DNF);
 
-  const isVisualMedia = [MediaType.MOVIE, MediaType.SERIES, MediaType.DOCUMENTARY].includes(type);
-  const isInteractiveMedia = [MediaType.BOOK, MediaType.GAME, MediaType.SERIES].includes(type);
+  const isVisualMedia = [MediaType.MOVIE, MediaType.DOCUMENTARY].includes(type);
+  const isInteractiveMedia = [MediaType.BOOK, MediaType.GAME, MediaType.SHOW].includes(type);
+
+  // Automatically calculate responsive status based on date fields
+  let derivedStatus = MediaStatus.PLANNED;
+  if (isVisualMedia) {
+    if (watchDate) {
+      derivedStatus = MediaStatus.COMPLETED;
+    }
+  } else if (isInteractiveMedia) {
+    if (isDnf) {
+      derivedStatus = MediaStatus.DNF;
+    } else if (endDate) {
+      derivedStatus = MediaStatus.COMPLETED;
+    } else if (startDate) {
+      derivedStatus = MediaStatus.ACTIVE;
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +54,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
     
     // If title or ISBN changed, try to fetch a new cover
     if (title !== item.title || (type === MediaType.BOOK && isbn !== item.isbn)) {
-      if ([MediaType.MOVIE, MediaType.SERIES, MediaType.DOCUMENTARY].includes(type)) {
+      if ([MediaType.MOVIE, MediaType.SHOW, MediaType.DOCUMENTARY].includes(type)) {
         currentImageUrl = await fetchMediaPoster(title, type as any) || currentImageUrl;
       } else if (type === MediaType.BOOK) {
         currentImageUrl = await fetchBookCover(title, isbn) || currentImageUrl;
@@ -51,17 +67,17 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
       ...item,
       title,
       type,
-      status,
+      status: derivedStatus,
       rating,
       notes,
       tags,
       imageUrl: currentImageUrl,
       link: link || undefined,
       isbn: type === MediaType.BOOK ? isbn : undefined,
-      watchDate: [MediaType.MOVIE, MediaType.SERIES, MediaType.DOCUMENTARY].includes(type) ? (watchDate || undefined) : undefined,
-      startDate: [MediaType.BOOK, MediaType.GAME, MediaType.SERIES].includes(type) ? (startDate || undefined) : undefined,
-      endDate: [MediaType.BOOK, MediaType.GAME, MediaType.SERIES].includes(type) ? (endDate || undefined) : undefined,
-      platform: [MediaType.MOVIE, MediaType.SERIES, MediaType.DOCUMENTARY].includes(type) ? platform : undefined,
+      watchDate: [MediaType.MOVIE, MediaType.DOCUMENTARY].includes(type) ? (watchDate || undefined) : undefined,
+      startDate: [MediaType.BOOK, MediaType.GAME, MediaType.SHOW].includes(type) ? (startDate || undefined) : undefined,
+      endDate: [MediaType.BOOK, MediaType.GAME, MediaType.SHOW].includes(type) ? (endDate || undefined) : undefined,
+      platform: [MediaType.MOVIE, MediaType.SHOW, MediaType.DOCUMENTARY].includes(type) ? platform : undefined,
       console: type === MediaType.GAME ? consoleName : undefined,
     };
     onSave(updatedItem);
@@ -81,7 +97,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
       >
         <div className="p-6 border-b border-white/5 flex justify-between items-center bg-secondary-accent/50">
           <h2 className="text-xl font-semibold text-white">
-            {item.status === MediaStatus.PLANNED && status === MediaStatus.COMPLETED ? 'Complete Tracking' : 'Edit Media'}
+            {item.status === MediaStatus.PLANNED && derivedStatus === MediaStatus.COMPLETED ? 'Complete Tracking' : 'Edit Media'}
           </h2>
           <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full text-zinc-400 transition-colors" title="Close">
             <X size={20} />
@@ -95,7 +111,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
             <div className="grid grid-cols-5 gap-2">
               {[
                 { id: MediaType.MOVIE, icon: <Film size={18} />, label: 'Movie' },
-                { id: MediaType.SERIES, icon: <Tv size={18} />, label: 'Series' },
+                { id: MediaType.SHOW, icon: <Tv size={18} />, label: 'Show' },
                 { id: MediaType.DOCUMENTARY, icon: <Film size={18} />, label: 'Doc' },
                 { id: MediaType.BOOK, icon: <Book size={18} />, label: 'Book' },
                 { id: MediaType.GAME, icon: <Gamepad2 size={18} />, label: 'Game' },
@@ -130,20 +146,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-bold text-white uppercase tracking-widest mb-2">Status</label>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as any)}
-                  className="w-full bg-app-bg border border-white/10 rounded-xl px-4 h-[50px] text-white focus:outline-none focus:border-primary-accent/50 transition-colors appearance-none"
-                >
-                  <option value={MediaStatus.COMPLETED}>Completed</option>
-                  <option value={MediaStatus.ACTIVE}>Active</option>
-                  <option value={MediaStatus.PLANNED}>Planned</option>
-                  <option value={MediaStatus.DNF}>DNF (Abgebrochen)</option>
-                </select>
-              </div>
+            <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className="block text-xs font-bold text-white uppercase tracking-widest mb-2">Rating</label>
                 <div className="flex items-center h-[50px] gap-1 px-2">
@@ -175,7 +178,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
               >
                 {isVisualMedia && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {type !== MediaType.SERIES && (
+                    {type !== MediaType.SHOW && (
                       <div>
                         <label className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-widest mb-2">
                           <Calendar size={12} /> Watch Date
@@ -200,7 +203,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                         </div>
                       </div>
                     )}
-                    <div className={type === MediaType.SERIES ? "col-span-2" : ""}>
+                    <div className={type === MediaType.SHOW ? "col-span-2" : ""}>
                       <label className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-widest mb-2">
                         <Monitor size={12} /> Platform
                       </label>
@@ -216,52 +219,70 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                 )}
 
                 {isInteractiveMedia && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-widest mb-2">
-                        <Calendar size={12} /> Start Date
-                      </label>
-                      <div className="flex gap-2 items-center">
-                        <input
-                          type="date"
-                          value={startDate}
-                          onChange={(e) => setStartDate(e.target.value)}
-                          className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
-                        />
-                        {startDate && (
-                          <button
-                            type="button"
-                            onClick={() => setStartDate('')}
-                            className="p-3 text-zinc-500 hover:text-white bg-app-bg border border-white/10 rounded-xl transition-colors shrink-0"
-                            title="Clear date"
-                          >
-                            <X size={16} />
-                          </button>
-                        )}
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-widest mb-2">
+                          <Calendar size={12} /> Start Date
+                        </label>
+                        <div className="flex gap-2 items-center">
+                          <input
+                            type="date"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
+                          />
+                          {startDate && (
+                            <button
+                              type="button"
+                              onClick={() => setStartDate('')}
+                              className="p-3 text-zinc-500 hover:text-white bg-app-bg border border-white/10 rounded-xl transition-colors shrink-0"
+                              title="Clear date"
+                            >
+                              <X size={16} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-widest mb-2">
+                          <Calendar size={12} /> End Date
+                        </label>
+                        <div className="flex gap-2 items-center">
+                          <input
+                            type="date"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
+                          />
+                          {endDate && (
+                            <button
+                              type="button"
+                              onClick={() => setEndDate('')}
+                              className="p-3 text-zinc-500 hover:text-white bg-app-bg border border-white/10 rounded-xl transition-colors shrink-0"
+                              title="Clear date"
+                            >
+                              <X size={16} />
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <div>
-                      <label className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-widest mb-2">
-                        <Calendar size={12} /> End Date
-                      </label>
-                      <div className="flex gap-2 items-center">
-                        <input
-                          type="date"
-                          value={endDate}
-                          onChange={(e) => setEndDate(e.target.value)}
-                          className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
-                        />
-                        {endDate && (
-                          <button
-                            type="button"
-                            onClick={() => setEndDate('')}
-                            className="p-3 text-zinc-500 hover:text-white bg-app-bg border border-white/10 rounded-xl transition-colors shrink-0"
-                            title="Clear date"
-                          >
-                            <X size={16} />
-                          </button>
-                        )}
-                      </div>
+
+                    {/* Did Not Finish Button */}
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setIsDnf(!isDnf)}
+                        className={`w-full py-3.5 px-4 rounded-xl border text-xs font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
+                          isDnf 
+                            ? 'bg-[#6b1e1e]/20 border-[#6b1e1e]/60 text-red-400 hover:bg-[#6b1e1e]/30' 
+                            : 'bg-app-bg border-white/10 text-zinc-400 hover:border-red-500/30 hover:text-red-400'
+                        }`}
+                      >
+                        <X size={14} className={isDnf ? "animate-pulse" : ""} />
+                        <span>{isDnf ? 'Did Not Finish (DNF)' : 'Mark as "Did Not Finish" (DNF)'}</span>
+                      </button>
                     </div>
                   </div>
                 )}

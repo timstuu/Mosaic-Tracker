@@ -15,7 +15,7 @@ export const ActiveMediaShelf: React.FC<ActiveMediaShelfProps> = ({ items, onIte
 
   const getTypeIcon = (type: MediaType) => {
     switch (type) {
-      case MediaType.SERIES: return <Tv size={14} />;
+      case MediaType.SHOW: return <Tv size={14} />;
       case MediaType.BOOK: return <Book size={14} />;
       case MediaType.GAME: return <Gamepad2 size={14} />;
       default: return <Play size={14} />;
@@ -24,7 +24,7 @@ export const ActiveMediaShelf: React.FC<ActiveMediaShelfProps> = ({ items, onIte
 
   const getTypeLabel = (type: MediaType) => {
     switch (type) {
-      case MediaType.SERIES: return 'Watching';
+      case MediaType.SHOW: return 'Watching';
       case MediaType.BOOK: return 'Reading';
       case MediaType.GAME: return 'Playing';
       default: return 'Active';

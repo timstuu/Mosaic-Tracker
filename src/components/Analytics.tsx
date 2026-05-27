@@ -27,7 +27,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ items, challenges, onAddCh
   const stats = useMemo(() => {
     const completedItems = items.filter(item => {
       if (item.status !== MediaStatus.COMPLETED) return false;
-      if ([MediaType.SERIES, MediaType.BOOK, MediaType.GAME].includes(item.type)) {
+      if ([MediaType.SHOW, MediaType.BOOK, MediaType.GAME].includes(item.type)) {
         return !!item.endDate;
       }
       return !!item.watchDate;
@@ -86,7 +86,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ items, challenges, onAddCh
         if (item.type !== challenge.mediaType) return false;
         if (item.status !== MediaStatus.COMPLETED) return false;
         
-        if ([MediaType.SERIES, MediaType.BOOK, MediaType.GAME].includes(item.type)) {
+        if ([MediaType.SHOW, MediaType.BOOK, MediaType.GAME].includes(item.type)) {
           if (!item.endDate) return false;
         } else {
           if (!item.watchDate) return false;
@@ -270,7 +270,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ items, challenges, onAddCh
   const renderChallenges = () => {
     const typeIcons = {
       [MediaType.MOVIE]: <Film size={14} />,
-      [MediaType.SERIES]: <Tv size={14} />,
+      [MediaType.SHOW]: <Tv size={14} />,
       [MediaType.DOCUMENTARY]: <Film size={14} />,
       [MediaType.BOOK]: <Book size={14} />,
       [MediaType.GAME]: <Gamepad2 size={14} />,

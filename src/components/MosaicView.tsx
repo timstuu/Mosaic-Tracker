@@ -52,7 +52,7 @@ export const MosaicView: React.FC<MosaicViewProps> = ({ items, onItemClick }) =>
                     ) : (
                       <div className="w-full h-full bg-white/5 flex flex-col items-center justify-center text-zinc-500 p-2 text-center">
                         {item.type === MediaType.MOVIE || item.type === MediaType.DOCUMENTARY ? <Film size={24} className="mb-2" /> : 
-                         item.type === MediaType.SERIES ? <Tv size={24} className="mb-2" /> :
+                         item.type === MediaType.SHOW ? <Tv size={24} className="mb-2" /> :
                          item.type === MediaType.BOOK ? <Book size={24} className="mb-2" /> : <Gamepad2 size={24} className="mb-2" />}
                         <span className="text-[10px] uppercase tracking-widest line-clamp-2">{item.title}</span>
                       </div>

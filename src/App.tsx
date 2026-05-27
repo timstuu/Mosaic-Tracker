@@ -7,11 +7,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 import { Auth } from './components/Auth';
 import { Layout } from './components/Layout';
-import { QuickAdd } from './components/QuickAdd';
 import { ActiveMediaShelf } from './components/ActiveMediaShelf';
 import { MosaicLaunch } from './components/MosaicLaunch';
 import { Analytics } from './components/Analytics';
-import { BacklogAdd } from './components/BacklogAdd';
 import { ImportModal } from './components/ImportModal';
 import { EditModal } from './components/EditModal';
 import { MediaItem, MediaType, Challenge, MediaStatus } from './types';
@@ -20,6 +18,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ChallengeModal } from './components/ChallengeModal';
 
 import { MosaicView } from './components/MosaicView';
+import { MediaForm } from './components/MediaForm';
 
 type Page = 'tracker' | 'backlog' | 'analytics' | 'settings';
 
@@ -38,6 +37,25 @@ export default function App() {
   const [isChallengeModalOpen, setIsChallengeModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'mosaic'>('mosaic');
   const [expandedBacklogTypes, setExpandedBacklogTypes] = useState<Set<MediaType>>(new Set());
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  const handleDragEnd = (event: any, info: any) => {
+    const swipeThreshold = 50;
+    const offset = info.offset.x;
+    const velocity = info.velocity.x;
+    const pageOrder: Page[] = ['tracker', 'backlog', 'analytics', 'settings'];
+    const currentIndex = pageOrder.indexOf(activePage);
+
+    if (offset < -swipeThreshold && velocity < -100) {
+      if (currentIndex < pageOrder.length - 1) {
+        setActivePage(pageOrder[currentIndex + 1]);
+      }
+    } else if (offset > swipeThreshold && velocity > 100) {
+      if (currentIndex > 0) {
+        setActivePage(pageOrder[currentIndex - 1]);
+      }
+    }
+  };
 
   useEffect(() => {
     setIsSearchVisible(false);
@@ -444,7 +462,7 @@ const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'nu
                     ) : (
                       <div className="w-8 h-12 bg-white/5 rounded border border-white/5 flex items-center justify-center text-zinc-300">
                         {item.type === MediaType.MOVIE || item.type === MediaType.DOCUMENTARY ? <Film size={14} /> : 
-                         item.type === MediaType.SERIES ? <Tv size={14} /> :
+                         item.type === MediaType.SHOW ? <Tv size={14} /> :
                          item.type === MediaType.BOOK ? <Book size={14} /> : <Gamepad2 size={14} />}
                       </div>
                     )}
@@ -564,31 +582,28 @@ const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'nu
 
     return (
       <div className="max-w-4xl mx-auto">
-        <QuickAdd onSave={handleSaveMedia} />
-
         <ActiveMediaShelf 
           items={activeItems} 
           onItemClick={setEditingItem} 
         />
 
-        <div className="flex justify-end mb-4 mt-8">
-          <div className="bg-secondary-accent/50 p-1 rounded-xl border border-white/5 flex gap-1">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors ${viewMode === 'list' ? 'bg-primary-accent text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-            >
-              List
-            </button>
-            <button
-              onClick={() => setViewMode('mosaic')}
-              className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-colors ${viewMode === 'mosaic' ? 'bg-primary-accent text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
-            >
-              Mosaic
-            </button>
-          </div>
+        <div className="flex justify-end mb-4 mt-8 gap-4 font-sans">
+          <button
+            onClick={() => setViewMode('list')}
+            className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${viewMode === 'list' ? 'text-[#e7e7e7]' : 'text-[#576d87] hover:text-[#e7e7e7]'}`}
+          >
+            List
+          </button>
+          <span className="text-[#576d87]/30">/</span>
+          <button
+            onClick={() => setViewMode('mosaic')}
+            className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${viewMode === 'mosaic' ? 'text-[#e7e7e7]' : 'text-[#576d87] hover:text-[#e7e7e7]'}`}
+          >
+            Mosaic
+          </button>
         </div>
 
-        <div className="bg-secondary-accent/30 rounded-[2.5rem] border border-white/5 overflow-hidden backdrop-blur-sm mb-24">
+        <div className="overflow-hidden mb-24 font-sans">
           {loading ? (
             <div className="p-12 text-center text-zinc-300 animate-pulse">Loading your library...</div>
           ) : completedItems.length === 0 ? (
@@ -623,7 +638,7 @@ const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'nu
 
     const typeIcons = {
       [MediaType.MOVIE]: <Film size={14} />,
-      [MediaType.SERIES]: <Tv size={14} />,
+      [MediaType.SHOW]: <Tv size={14} />,
       [MediaType.DOCUMENTARY]: <Film size={14} />,
       [MediaType.BOOK]: <Book size={14} />,
       [MediaType.GAME]: <Gamepad2 size={14} />,
@@ -640,13 +655,11 @@ const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'nu
     };
 
     return (
-      <div className="max-w-4xl mx-auto px-4 pb-24">
+      <div className="max-w-4xl mx-auto px-0 pb-24 font-sans">
         <div className="mb-8">
-          <h1 className="text-3xl font-serif italic text-white mb-2">Backlog</h1>
-          <p className="text-zinc-300 text-sm">Media you're planning to experience later.</p>
+          <h1 className="text-2xl font-bold text-[#e7e7e7] mb-2 font-sans tracking-tight">Backlog</h1>
+          <p className="text-[#576d87] text-xs uppercase tracking-wider">Media you're planning to experience later.</p>
         </div>
-
-        <BacklogAdd onSave={handleSaveMedia} />
 
         <div className="space-y-8">
           {Object.entries(groupedBacklog).map(([type, items]) => {
@@ -667,7 +680,7 @@ const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'nu
                   </div>
                 </div>
                 
-                <div className="bg-secondary-accent/30 rounded-3xl border border-white/5 overflow-hidden backdrop-blur-sm">
+                <div className="overflow-hidden">
                   {displayedItems.map((item) => {
                     try {
                       if (!item || !item.title) return null;
@@ -714,11 +727,11 @@ const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'nu
                               <Edit2 size={16} />
                             </button>
                             <a 
-                              href={item.link || ((item.type === MediaType.MOVIE || item.type === MediaType.SERIES || item.type === MediaType.DOCUMENTARY) ? 'https://www.werstreamt.es/filme-serien/?q=' + encodeURIComponent(item.title) : `https://www.google.com/search?q=${encodeURIComponent(item.title)}`)}
+                              href={item.link || ((item.type === MediaType.MOVIE || item.type === MediaType.SHOW || item.type === MediaType.DOCUMENTARY) ? 'https://www.werstreamt.es/filme-serien/?q=' + encodeURIComponent(item.title) : `https://www.google.com/search?q=${encodeURIComponent(item.title)}`)}
                               target="_blank" 
                               rel="noopener noreferrer"
                               className="p-2 text-zinc-300 hover:text-primary-accent transition-colors"
-                              title={item.link ? "Open Link" : ((item.type === MediaType.MOVIE || item.type === MediaType.SERIES || item.type === MediaType.DOCUMENTARY) ? "Auf WerStreamt.es suchen" : "Auf Google suchen")}
+                              title={item.link ? "Open Link" : ((item.type === MediaType.MOVIE || item.type === MediaType.SHOW || item.type === MediaType.DOCUMENTARY) ? "Auf WerStreamt.es suchen" : "Auf Google suchen")}
                             >
                               <ExternalLink size={16} />
                             </a>
@@ -752,9 +765,9 @@ const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'nu
           })}
 
           {backlogItems.length === 0 && (
-            <div className="py-20 text-center bg-secondary-accent/30 rounded-3xl border border-white/5 border-dashed">
-              <Bookmark className="w-12 h-12 text-zinc-300 mx-auto mb-4" />
-              <p className="text-white font-serif italic">Your backlog is empty. Add something above!</p>
+            <div className="py-20 text-center border border-[#576d87]/10 rounded-2xl">
+              <Bookmark className="w-10 h-10 text-[#576d87] mx-auto mb-4" />
+              <p className="text-[#576d87] text-sm tracking-tight font-sans">Your backlog is empty.</p>
             </div>
           )}
         </div>
@@ -775,14 +788,14 @@ const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'nu
   );
 
   const renderSettings = () => (
-    <div className="max-w-4xl mx-auto px-4 pb-24">
+    <div className="max-w-4xl mx-auto px-0 pb-24 font-sans">
       <div className="mb-12">
-        <h1 className="text-3xl font-serif italic text-white mb-2">Settings</h1>
-        <p className="text-white text-sm">Manage your library and preferences.</p>
+        <h1 className="text-2xl font-bold text-[#e7e7e7] mb-2 font-sans tracking-tight">Settings</h1>
+        <p className="text-[#576d87] text-xs uppercase tracking-wider">Manage your library and preferences.</p>
       </div>
 
-      <div className="space-y-6">
-        <div className="bg-secondary-accent border border-white/5 rounded-3xl p-6 shadow-xl">
+      <div className="space-y-12">
+        <div className="py-6 border-b border-[#576d87]/10">
           <div className="flex items-center gap-4 mb-6">
             <div className="w-10 h-10 bg-primary-accent/10 rounded-xl flex items-center justify-center text-primary-accent">
               <Database size={20} />
@@ -887,18 +900,18 @@ const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'nu
           </div>
         </div>
 
-        <div className="bg-secondary-accent border border-white/5 rounded-3xl p-6 shadow-xl">
+        <div className="py-6">
           <div className="flex items-center gap-4 mb-6">
-            <div className="w-10 h-10 bg-primary-accent/10 rounded-xl flex items-center justify-center text-primary-accent">
+            <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center text-[#e7e7e7]">
               <Shield size={20} />
             </div>
             <div>
               <h3 className="text-sm font-bold text-white uppercase tracking-widest">Privacy & Security</h3>
-              <p className="text-xs text-white">Control your tracking preferences.</p>
+              <p className="text-xs text-[#576d87]">Control your tracking preferences.</p>
             </div>
           </div>
-          <div className="p-4 bg-white/5 rounded-2xl">
-            <p className="text-xs text-white italic">Your data is stored securely in your private cloud database. You can export or clear your data at any time.</p>
+          <div className="p-4 bg-white/5 rounded-xl">
+            <p className="text-xs text-[#e7e7e7] italic font-sans">Your data is stored securely in your private cloud database. You can export or clear your data at any time.</p>
           </div>
         </div>
 
@@ -950,8 +963,13 @@ const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'nu
   }
 
   return (
-    <Layout onSearchToggle={() => setIsSearchVisible(!isSearchVisible)}>
-      <div className="max-w-4xl mx-auto px-4">
+    <Layout 
+      activePage={activePage} 
+      setActivePage={setActivePage} 
+      onSearchToggle={() => setIsSearchVisible(!isSearchVisible)}
+      onAddClick={() => setIsAddModalOpen(true)}
+    >
+      <div className="max-w-4xl mx-auto px-0 font-sans">
         <AnimatePresence>
           {isSearchVisible && (
             <motion.div 
@@ -961,19 +979,19 @@ const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'nu
               className="mb-8 overflow-hidden"
             >
               <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-300" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
                 <input
                   autoFocus
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search your media library..."
-                  className="w-full bg-secondary-accent border border-white/10 rounded-2xl pl-12 pr-12 py-4 text-white focus:outline-none focus:border-primary-accent/50 transition-all"
+                  className="w-full bg-[#242d3a] border border-[#576d87]/20 rounded-2xl pl-12 pr-12 py-4 text-[#e7e7e7] focus:outline-none focus:border-[#e7e7e7]/50 transition-all font-sans text-sm"
                 />
                 {searchQuery && (
                   <button 
                     onClick={() => setSearchQuery('')}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded-full text-zinc-300"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-white/5 rounded-full text-zinc-400"
                     title="Clear search"
                   >
                     <X className="w-4 h-4" />
@@ -985,13 +1003,29 @@ const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'nu
         </AnimatePresence>
       </div>
 
-      {searchQuery.trim() ? renderSearchResults() : (
-        <>
-          {activePage === 'tracker' && renderTracker()}
-          {activePage === 'backlog' && renderBacklog()}
-          {activePage === 'analytics' && renderAnalytics()}
-          {activePage === 'settings' && renderSettings()}
-        </>
+      {searchQuery.trim() ? (
+        renderSearchResults()
+      ) : (
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activePage}
+            drag="x"
+            dragDirectionLock
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.2}
+            onDragEnd={handleDragEnd}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ type: "spring", stiffness: 350, damping: 32 }}
+            className="w-full touch-pan-y"
+          >
+            {activePage === 'tracker' && renderTracker()}
+            {activePage === 'backlog' && renderBacklog()}
+            {activePage === 'analytics' && renderAnalytics()}
+            {activePage === 'settings' && renderSettings()}
+          </motion.div>
+        </AnimatePresence>
       )}
 
       <ImportModal 
@@ -1012,48 +1046,23 @@ const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'nu
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {isAddModalOpen && (
+          <MediaForm 
+            onClose={() => setIsAddModalOpen(false)} 
+            onSave={(item) => {
+              handleSaveMedia(item);
+              setIsAddModalOpen(false);
+            }} 
+          />
+        )}
+      </AnimatePresence>
+
       <ChallengeModal
         isOpen={isChallengeModalOpen}
         onClose={() => setIsChallengeModalOpen(false)}
         onSave={handleSaveChallenge}
       />
-
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 h-20 bg-secondary-accent/90 backdrop-blur-xl border-t border-white/5 z-50 flex items-center justify-center px-6 pb-safe">
-        <div className="flex items-center justify-between w-full max-w-md">
-          <button
-            onClick={() => setActivePage('tracker')}
-            className={`flex flex-col items-center gap-1 transition-all ${activePage === 'tracker' ? 'text-primary-accent' : 'text-zinc-300 hover:text-white'}`}
-          >
-            <LayoutGrid className={`w-6 h-6 ${activePage === 'tracker' ? 'scale-110' : ''} transition-transform`} />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Tracker</span>
-          </button>
-
-          <button
-            onClick={() => setActivePage('backlog')}
-            className={`flex flex-col items-center gap-1 transition-all ${activePage === 'backlog' ? 'text-primary-accent' : 'text-zinc-300 hover:text-white'}`}
-          >
-            <Bookmark className={`w-6 h-6 ${activePage === 'backlog' ? 'scale-110' : ''} transition-transform`} />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Backlog</span>
-          </button>
-
-          <button
-            onClick={() => setActivePage('analytics')}
-            className={`flex flex-col items-center gap-1 transition-all ${activePage === 'analytics' ? 'text-primary-accent' : 'text-zinc-300 hover:text-white'}`}
-          >
-            <BarChart3 className={`w-6 h-6 ${activePage === 'analytics' ? 'scale-110' : ''} transition-transform`} />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Analytics</span>
-          </button>
-
-          <button
-            onClick={() => setActivePage('settings')}
-            className={`flex flex-col items-center gap-1 transition-all ${activePage === 'settings' ? 'text-primary-accent' : 'text-zinc-300 hover:text-white'}`}
-          >
-            <SettingsIcon className={`w-6 h-6 ${activePage === 'settings' ? 'scale-110' : ''} transition-transform`} />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Settings</span>
-          </button>
-        </div>
-      </nav>
 
       <MosaicLaunch 
         isVisible={showLaunch} 
@@ -1061,4 +1070,5 @@ const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'nu
       />
     </Layout>
   );
+
 }

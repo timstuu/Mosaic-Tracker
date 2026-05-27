@@ -1,6 +1,6 @@
 export enum MediaType {
   MOVIE = 'movie',
-  SERIES = 'series',
+  SHOW = 'show',
   DOCUMENTARY = 'documentary',
   BOOK = 'book',
   GAME = 'game'
@@ -21,10 +21,10 @@ export interface MediaItem {
   rating: number; // 0-5
   dateAdded: string; // ISO string
   dateCompleted?: string; // ISO string
-  watchDate?: string; // For movies, series, documentaries
-  startDate?: string; // For books, games
-  endDate?: string; // For books, games
-  platform?: string; // For movies, series, documentaries (Streaming Platform)
+  watchDate?: string; // For movies, shows, documentaries
+  startDate?: string; // For books, games, shows
+  endDate?: string; // For books, games, shows
+  platform?: string; // For movies, shows, documentaries (Streaming Platform)
   console?: string; // For games
   link?: string; // For backlog items
   notes?: string;

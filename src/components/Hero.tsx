@@ -23,7 +23,7 @@ export const Hero: React.FC<HeroProps> = ({ onStart }) => {
             Catalog your <span className="text-primary-accent italic">digital</span> universe.
           </h1>
           <p className="text-lg text-white mb-10 leading-relaxed max-w-lg">
-            A minimalist tracker for your movies, series, books, and games. 
+            A minimalist tracker for your movies, shows, books, and games. 
             Beautifully organized, data-driven, and designed for focus.
           </p>
           

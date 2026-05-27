@@ -7,14 +7,14 @@ const TMDB_API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 const BASE_URL = 'https://api.themoviedb.org/3';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 
-export async function fetchMediaPoster(title: string, type: 'movie' | 'series' | 'documentary'): Promise<string | undefined> {
+export async function fetchMediaPoster(title: string, type: 'movie' | 'show' | 'documentary'): Promise<string | undefined> {
   if (!TMDB_API_KEY) {
     console.warn('TMDB API Key missing. Please set VITE_TMDB_API_KEY in your environment.');
     return undefined;
   }
 
   try {
-    const searchType = type === 'series' ? 'tv' : 'movie';
+    const searchType = type === 'show' ? 'tv' : 'movie';
     const response = await fetch(
       `${BASE_URL}/search/${searchType}?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(title)}`
     );

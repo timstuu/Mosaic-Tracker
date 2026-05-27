@@ -32,7 +32,7 @@ export const ChallengeProgress: React.FC<ChallengeProgressProps> = ({ challenges
 
   const typeIcons = {
     [MediaType.MOVIE]: <Film size={12} />,
-    [MediaType.SERIES]: <Tv size={12} />,
+    [MediaType.SHOW]: <Tv size={12} />,
     [MediaType.DOCUMENTARY]: <Film size={12} />,
     [MediaType.BOOK]: <Book size={12} />,
     [MediaType.GAME]: <Gamepad2 size={12} />,

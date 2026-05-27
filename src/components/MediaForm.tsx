@@ -10,7 +10,6 @@ interface MediaFormProps {
 
 export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
   const [type, setType] = useState<MediaType>(MediaType.MOVIE);
-  const [status, setStatus] = useState<MediaStatus>(MediaStatus.PLANNED);
   const [title, setTitle] = useState('');
   const [rating, setRating] = useState(0);
   const [watchDate, setWatchDate] = useState('');
@@ -19,28 +18,46 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
   const [platform, setPlatform] = useState('');
   const [consoleName, setConsoleName] = useState('');
   const [notes, setNotes] = useState('');
+  const [isDnf, setIsDnf] = useState(false);
+
+  const isVisualMedia = [MediaType.MOVIE, MediaType.DOCUMENTARY].includes(type);
+  const isInteractiveMedia = [MediaType.BOOK, MediaType.GAME, MediaType.SHOW].includes(type);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Automatically calculate status based on date fields
+    let derivedStatus = MediaStatus.PLANNED;
+    if (isVisualMedia) {
+      if (watchDate) {
+        derivedStatus = MediaStatus.COMPLETED;
+      }
+    } else if (isInteractiveMedia) {
+      if (isDnf) {
+        derivedStatus = MediaStatus.DNF;
+      } else if (endDate) {
+        derivedStatus = MediaStatus.COMPLETED;
+      } else if (startDate) {
+        derivedStatus = MediaStatus.ACTIVE;
+      }
+    }
+
     const newItem: Partial<MediaItem> = {
       id: crypto.randomUUID(),
       title,
       type,
-      status,
+      status: derivedStatus,
       rating,
       dateAdded: new Date().toISOString(),
       notes,
-      watchDate: [MediaType.MOVIE, MediaType.SERIES, MediaType.DOCUMENTARY].includes(type) ? watchDate : undefined,
-      startDate: [MediaType.BOOK, MediaType.GAME].includes(type) ? startDate : undefined,
-      endDate: [MediaType.BOOK, MediaType.GAME].includes(type) ? endDate : undefined,
-      platform: [MediaType.MOVIE, MediaType.SERIES, MediaType.DOCUMENTARY].includes(type) ? platform : undefined,
-      console: type === MediaType.GAME ? consoleName : undefined,
+      watchDate: isVisualMedia ? (watchDate || undefined) : undefined,
+      startDate: isInteractiveMedia ? (startDate || undefined) : undefined,
+      endDate: isInteractiveMedia ? (endDate || undefined) : undefined,
+      platform: [MediaType.MOVIE, MediaType.SHOW, MediaType.DOCUMENTARY].includes(type) ? (platform || undefined) : undefined,
+      console: type === MediaType.GAME ? (consoleName || undefined) : undefined,
     };
     onSave(newItem);
   };
-
-  const isVisualMedia = [MediaType.MOVIE, MediaType.SERIES, MediaType.DOCUMENTARY].includes(type);
-  const isInteractiveMedia = [MediaType.BOOK, MediaType.GAME].includes(type);
 
   return (
     <motion.div 
@@ -66,7 +83,7 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
           <div className="grid grid-cols-5 gap-2">
             {[
               { id: MediaType.MOVIE, icon: <Film size={18} />, label: 'Movie' },
-              { id: MediaType.SERIES, icon: <Tv size={18} />, label: 'Series' },
+              { id: MediaType.SHOW, icon: <Tv size={18} />, label: 'Show' },
               { id: MediaType.DOCUMENTARY, icon: <Film size={18} />, label: 'Doc' },
               { id: MediaType.BOOK, icon: <Book size={18} />, label: 'Book' },
               { id: MediaType.GAME, icon: <Gamepad2 size={18} />, label: 'Game' },
@@ -100,30 +117,7 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Status</label>
-              <div className="flex gap-2">
-                {[
-                  { id: MediaStatus.PLANNED, label: 'Planned' },
-                  { id: MediaStatus.ACTIVE, label: 'Active' },
-                  { id: MediaStatus.COMPLETED, label: 'Completed' },
-                  { id: MediaStatus.DNF, label: 'DNF' },
-                ].map((s) => (
-                  <button
-                    key={s.id}
-                    type="button"
-                    onClick={() => setStatus(s.id)}
-                    className={`flex-1 py-2 px-1 rounded-xl border text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all ${
-                      status === s.id 
-                        ? 'bg-primary-accent border-primary-accent text-app-bg' 
-                        : 'bg-app-bg border-white/10 text-zinc-400 hover:border-primary-accent/50'
-                    }`}
-                  >
-                    {s.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+
 
             <div className="grid grid-cols-1 gap-4">
               <div>
@@ -155,58 +149,80 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
                 exit={{ opacity: 0, y: -10 }}
                 className="space-y-4"
               >
-                {isVisualMedia && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="flex items-center gap-2 text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">
-                        <Calendar size={12} /> Watch Date
-                      </label>
-                      <input
-                        type="date"
-                        value={watchDate}
-                        onChange={(e) => setWatchDate(e.target.value)}
-                        className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
-                      />
+                {/* Watch Date for strictly Movie & Documentary */}
+                {(type === MediaType.MOVIE || type === MediaType.DOCUMENTARY) && (
+                  <div>
+                    <label className="flex items-center gap-2 text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">
+                      <Calendar size={12} /> Watch Date
+                    </label>
+                    <input
+                      type="date"
+                      value={watchDate}
+                      onChange={(e) => setWatchDate(e.target.value)}
+                      className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
+                    />
+                  </div>
+                )}
+
+                {/* For Games, Books, and Shows: Start Date & End Date */}
+                {(type === MediaType.GAME || type === MediaType.BOOK || type === MediaType.SHOW) && (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="flex items-center gap-2 text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">
+                          <Calendar size={12} /> Start Date
+                        </label>
+                        <input
+                          type="date"
+                          value={startDate}
+                          onChange={(e) => setStartDate(e.target.value)}
+                          className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <label className="flex items-center gap-2 text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">
+                          <Calendar size={12} /> End Date
+                        </label>
+                        <input
+                          type="date"
+                          value={endDate}
+                          onChange={(e) => setEndDate(e.target.value)}
+                          className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="flex items-center gap-2 text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">
-                        <Monitor size={12} /> Platform
-                      </label>
-                      <input
-                        type="text"
-                        value={platform}
-                        onChange={(e) => setPlatform(e.target.value)}
-                        placeholder="Netflix, HBO..."
-                        className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
-                      />
+
+                    {/* Did Not Finish Button */}
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setIsDnf(!isDnf)}
+                        className={`w-full py-3.5 px-4 rounded-xl border text-xs font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${
+                          isDnf 
+                            ? 'bg-[#6b1e1e]/20 border-[#6b1e1e]/60 text-red-400 hover:bg-[#6b1e1e]/30' 
+                            : 'bg-app-bg border-white/10 text-zinc-400 hover:border-red-500/30 hover:text-red-400'
+                        }`}
+                      >
+                        <X size={14} className={isDnf ? "animate-pulse" : ""} />
+                        <span>{isDnf ? 'Did Not Finish (DNF)' : 'Mark as "Did Not Finish" (DNF)'}</span>
+                      </button>
                     </div>
                   </div>
                 )}
 
-                {isInteractiveMedia && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="flex items-center gap-2 text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">
-                        <Calendar size={12} /> Start Date
-                      </label>
-                      <input
-                        type="date"
-                        value={startDate}
-                        onChange={(e) => setStartDate(e.target.value)}
-                        className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
-                      />
-                    </div>
-                    <div>
-                      <label className="flex items-center gap-2 text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">
-                        <Calendar size={12} /> End Date
-                      </label>
-                      <input
-                        type="date"
-                        value={endDate}
-                        onChange={(e) => setEndDate(e.target.value)}
-                        className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
-                      />
-                    </div>
+                {/* Platform for Movie, Show, Documentary */}
+                {[MediaType.MOVIE, MediaType.SHOW, MediaType.DOCUMENTARY].includes(type) && (
+                  <div>
+                    <label className="flex items-center gap-2 text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">
+                      <Monitor size={12} /> Platform
+                    </label>
+                    <input
+                      type="text"
+                      value={platform}
+                      onChange={(e) => setPlatform(e.target.value)}
+                      placeholder="Netflix, HBO..."
+                      className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
+                    />
                   </div>
                 )}
 
