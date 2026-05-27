@@ -1,6 +1,8 @@
 import React from 'react';
 import { Search, Plus } from 'lucide-react';
 import { motion } from 'motion/react';
+import { DynamicBackground } from './DynamicBackground';
+import { AppLogo } from './AppLogo';
 
 type Page = 'tracker' | 'backlog' | 'analytics' | 'settings';
 
@@ -27,16 +29,23 @@ export const Layout: React.FC<LayoutProps> = ({
   ];
 
   return (
-    <div className="min-h-screen bg-[#242d3a] text-[#e7e7e7] font-sans selection:bg-[#e7e7e7]/10 flex flex-col">
+    <div className="min-h-screen bg-transparent text-[#e7e7e7] font-sans selection:bg-[#e7e7e7]/10 flex flex-col relative">
+      <DynamicBackground />
+      
       {/* Top Header Shell */}
-      <header className="sticky top-0 z-50 bg-[#242d3a]/95 backdrop-blur-md border-b border-[#576d87]/10">
+      <header className="sticky top-0 z-50 bg-[#242d3a]/75 backdrop-blur-md border-b border-[#576d87]/10">
         <div className="max-w-4xl mx-auto px-6 pt-6 pb-0">
           {/* Header Top Row */}
           <div className="flex items-center justify-between">
-            {/* Branding - Pure Sans-Serif Off-White */}
-            <span className="font-bold text-2xl tracking-tight text-[#e7e7e7] font-sans">
-              Mosaic
-            </span>
+            {/* Branding - Pure Sans-Serif Off-White with integrated Logo */}
+            <div className="flex items-center gap-3">
+              <div className="border border-white/10 rounded-xl p-0.5 overflow-hidden bg-[#242d3a]/50 backdrop-blur-sm shadow-md flex-shrink-0">
+                <AppLogo className="h-8 w-8 rounded-[10px]" />
+              </div>
+              <span className="font-bold text-2xl tracking-tight text-[#e7e7e7] font-sans">
+                Mosaic
+              </span>
+            </div>
 
             {/* Actions: Add (Plus) and Search */}
             <div className="flex items-center gap-2">
@@ -90,7 +99,7 @@ export const Layout: React.FC<LayoutProps> = ({
       </main>
 
       {/* Footer */}
-      <footer className="py-12 bg-[#242d3a] border-t border-[#576d87]/10 mt-auto">
+      <footer className="py-12 bg-[#242d3a]/70 border-t border-[#576d87]/15 mt-auto backdrop-blur-md">
         <div className="max-w-4xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-8">
           <div className="flex items-center gap-2 opacity-50 text-[#576d87]">
             <span className="text-[10px] font-mono uppercase tracking-widest">Mosaic Media Tracker</span>

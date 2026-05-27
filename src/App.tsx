@@ -19,6 +19,7 @@ import { ChallengeModal } from './components/ChallengeModal';
 
 import { MosaicView } from './components/MosaicView';
 import { MediaForm } from './components/MediaForm';
+import { BacklogRow } from './components/BacklogRow';
 
 type Page = 'tracker' | 'backlog' | 'analytics' | 'settings';
 
@@ -685,65 +686,13 @@ const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'nu
                     try {
                       if (!item || !item.title) return null;
                       return (
-                        <div key={item.id} className="flex items-center gap-4 px-6 py-4 border-b border-white/[0.02] last:border-0 group hover:bg-white/5 transition-colors">
-                          {/* Thumbnail */}
-                          <div className="flex-shrink-0">
-                            {item.imageUrl ? (
-                              <img 
-                                src={item.imageUrl} 
-                                alt={item.title} 
-                                referrerPolicy="no-referrer"
-                                className="w-10 h-14 object-cover rounded shadow-lg border border-white/10"
-                              />
-                            ) : (
-                              <div className="w-10 h-14 bg-white/5 rounded border border-white/5 flex items-center justify-center text-zinc-300">
-                                {typeIcons[item.type]}
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-white group-hover:text-primary-accent transition-colors truncate">
-                              {item.title}
-                            </div>
-                            <div className="flex items-center gap-3 mt-1">
-                              {(item.platform || item.console) && (
-                                <span className="text-[10px] text-zinc-500 uppercase tracking-widest">
-                                  {item.platform || item.console}
-                                </span>
-                              )}
-                              <span className="text-[10px] text-zinc-600 font-mono">
-                                Added {new Date(item.dateAdded).toLocaleDateString()}
-                              </span>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center gap-2">
-                            <button 
-                              onClick={() => setEditingItem(item)}
-                              className="p-2 text-zinc-300 hover:text-primary-accent transition-colors"
-                              title="Edit entry"
-                            >
-                              <Edit2 size={16} />
-                            </button>
-                            <a 
-                              href={item.link || ((item.type === MediaType.MOVIE || item.type === MediaType.SHOW || item.type === MediaType.DOCUMENTARY) ? 'https://www.werstreamt.es/filme-serien/?q=' + encodeURIComponent(item.title) : `https://www.google.com/search?q=${encodeURIComponent(item.title)}`)}
-                              target="_blank" 
-                              rel="noopener noreferrer"
-                              className="p-2 text-zinc-300 hover:text-primary-accent transition-colors"
-                              title={item.link ? "Open Link" : ((item.type === MediaType.MOVIE || item.type === MediaType.SHOW || item.type === MediaType.DOCUMENTARY) ? "Auf WerStreamt.es suchen" : "Auf Google suchen")}
-                            >
-                              <ExternalLink size={16} />
-                            </a>
-                            <button 
-                              onClick={() => handleMoveToTracker(item)}
-                              className="p-2 text-zinc-300 hover:text-emerald-500 transition-colors"
-                              title="Mark as Tracked"
-                            >
-                              <Plus size={16} />
-                            </button>
-                          </div>
-                        </div>
+                        <BacklogRow
+                          key={item.id}
+                          item={item}
+                          typeIcons={typeIcons}
+                          onMoveToTracker={handleMoveToTracker}
+                          onEdit={(itemToEdit) => setEditingItem(itemToEdit)}
+                        />
                       );
                     } catch (err) {
                       console.error("Error rendering item in backlog:", item, err);

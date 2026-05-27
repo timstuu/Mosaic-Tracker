@@ -38,7 +38,7 @@ export const ActiveMediaShelf: React.FC<ActiveMediaShelfProps> = ({ items, onIte
         <h2 className="text-sm font-bold text-white uppercase tracking-widest">Currently Active</h2>
       </div>
       
-      <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar snap-x">
+      <div className="grid grid-cols-3 gap-2 md:gap-4 px-2">
         {activeItems.map((item) => {
           try {
             if (!item || !item.title) return null;
@@ -49,41 +49,43 @@ export const ActiveMediaShelf: React.FC<ActiveMediaShelfProps> = ({ items, onIte
                 animate={{ opacity: 1, scale: 1 }}
                 whileHover={{ y: -4 }}
                 onClick={() => onItemClick(item)}
-                className="flex-none w-40 sm:w-48 cursor-pointer group snap-start"
+                className="relative aspect-[2/3] rounded-lg overflow-hidden group cursor-pointer shadow-lg shadow-black/40 border border-white/10 bg-secondary-accent flex flex-col justify-between"
               >
-                <div className="relative aspect-[2/3] rounded-2xl overflow-hidden bg-secondary-accent border border-white/5 shadow-lg mb-3">
-                  {item.imageUrl ? (
-                    <img 
-                      src={item.imageUrl} 
-                      alt={item.title}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                      referrerPolicy="no-referrer"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-zinc-600 gap-2">
-                      {getTypeIcon(item.type)}
-                      <span className="text-xs font-medium uppercase tracking-widest">{item.type}</span>
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity" />
-                  
-                  <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md px-2 py-1 rounded-md flex items-center gap-1.5 border border-white/10">
-                    <span className="text-emerald-400">{getTypeIcon(item.type)}</span>
-                    <span className="text-[10px] font-bold text-white uppercase tracking-wider">
-                      {getTypeLabel(item.type)}
-                    </span>
+                {item.imageUrl ? (
+                  <img 
+                    src={item.imageUrl} 
+                    alt={item.title}
+                    className="w-full h-full absolute inset-0 object-cover transition-transform duration-500 group-hover:scale-110"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-zinc-500 p-2 text-center">
+                    {getTypeIcon(item.type)}
                   </div>
-                </div>
+                )}
                 
-                <h3 className="font-bold text-white text-sm line-clamp-1 group-hover:text-primary-accent transition-colors">
-                  {item.title}
-                </h3>
-                {item.platform && (
-                  <p className="text-xs text-zinc-400 mt-0.5 line-clamp-1">{item.platform}</p>
-                )}
-                {item.console && (
-                  <p className="text-xs text-zinc-400 mt-0.5 line-clamp-1">{item.console}</p>
-                )}
+                {/* Overlay gradient mask */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/45 to-transparent opacity-85 group-hover:opacity-95 transition-opacity" />
+                
+                {/* Active status top badge */}
+                <div className="absolute top-1.5 left-1.5 md:top-2.5 md:left-2.5 bg-black/70 backdrop-blur-md px-1.5 py-0.5 md:px-2 md:py-1 rounded-md flex items-center gap-1 border border-white/10 z-10">
+                  <span className="text-emerald-400 shrink-0">{getTypeIcon(item.type)}</span>
+                  <span className="text-[8px] md:text-[10px] font-bold text-white uppercase tracking-wider">
+                    {getTypeLabel(item.type)}
+                  </span>
+                </div>
+
+                {/* Typography Bottom Overlay */}
+                <div className="absolute bottom-0 left-0 right-0 p-2 md:p-3 z-10 flex flex-col justify-end">
+                  <h3 className="font-bold text-white text-[10px] sm:text-xs md:text-sm line-clamp-2 group-hover:text-primary-accent transition-colors leading-tight">
+                    {item.title}
+                  </h3>
+                  {(item.platform || item.console) && (
+                    <p className="text-[8px] sm:text-[10px] md:text-xs text-zinc-400 mt-0.5 line-clamp-1">
+                      {item.platform || item.console}
+                    </p>
+                  )}
+                </div>
               </motion.div>
             );
           } catch (err) {
