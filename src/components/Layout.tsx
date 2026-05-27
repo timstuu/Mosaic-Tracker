@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import { DynamicBackground } from './DynamicBackground';
 import { AppLogo } from './AppLogo';
 
-type Page = 'tracker' | 'backlog' | 'analytics' | 'settings';
+type Page = 'tracker' | 'backlog' | 'analytics' | 'friends' | 'settings';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -25,6 +25,7 @@ export const Layout: React.FC<LayoutProps> = ({
     { id: 'tracker', label: 'Tracker' },
     { id: 'backlog', label: 'Backlog' },
     { id: 'analytics', label: 'Analytics' },
+    { id: 'friends', label: 'Friends' },
     { id: 'settings', label: 'Settings' }
   ];
 
@@ -67,14 +68,26 @@ export const Layout: React.FC<LayoutProps> = ({
           </div>
 
           {/* Navigation Tab Bar Directly Underneath Branding Row */}
-          <nav className="flex justify-start gap-8 mt-5">
+          <nav 
+            className="flex justify-start gap-8 mt-5 overflow-x-auto select-none overflow-y-hidden"
+            style={{
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+              WebkitOverflowScrolling: 'touch'
+            }}
+          >
+            <style dangerouslySetInnerHTML={{__html: `
+              nav::-webkit-scrollbar {
+                display: none;
+              }
+            `}} />
             {tabs.map((tab) => {
               const isActive = activePage === tab.id;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActivePage(tab.id)}
-                  className={`relative py-3 text-xs uppercase tracking-widest font-bold transition-all focus:outline-none ${
+                  className={`relative py-3 text-xs uppercase tracking-widest font-bold transition-all focus:outline-none flex-shrink-0 ${
                     isActive ? 'text-[#e7e7e7]' : 'text-[#576d87] hover:text-[#e7e7e7]/80'
                   }`}
                 >

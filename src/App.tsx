@@ -20,8 +20,11 @@ import { ChallengeModal } from './components/ChallengeModal';
 import { MosaicView } from './components/MosaicView';
 import { MediaForm } from './components/MediaForm';
 import { BacklogRow } from './components/BacklogRow';
+import { Settings } from './components/Settings';
+import { FriendsView } from './components/FriendsView';
+import { TrackerRow } from './components/TrackerRow';
 
-type Page = 'tracker' | 'backlog' | 'analytics' | 'settings';
+type Page = 'tracker' | 'backlog' | 'analytics' | 'friends' | 'settings';
 
 export default function App() {
   const [session, setSession] = useState<any>(null);
@@ -39,12 +42,13 @@ export default function App() {
   const [viewMode, setViewMode] = useState<'list' | 'mosaic'>('mosaic');
   const [expandedBacklogTypes, setExpandedBacklogTypes] = useState<Set<MediaType>>(new Set());
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [trackerTab, setTrackerTab] = useState<'library' | 'friends'>('library');
 
   const handleDragEnd = (event: any, info: any) => {
     const swipeThreshold = 50;
     const offset = info.offset.x;
     const velocity = info.velocity.x;
-    const pageOrder: Page[] = ['tracker', 'backlog', 'analytics', 'settings'];
+    const pageOrder: Page[] = ['tracker', 'backlog', 'analytics', 'friends', 'settings'];
     const currentIndex = pageOrder.indexOf(activePage);
 
     if (offset < -swipeThreshold && velocity < -100) {
@@ -236,6 +240,34 @@ export default function App() {
     }
   };
 
+  const handleAddToBacklog = async (item: { title: string; type: MediaType; imageUrl?: string }) => {
+    if (!isSupabaseConfigured) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No user logged in');
+
+      const newItem = {
+        title: item.title,
+        type: item.type,
+        status: MediaStatus.PLANNED,
+        rating: 0,
+        dateAdded: new Date().toISOString(),
+        imageUrl: item.imageUrl,
+        user_id: user.id
+      };
+
+      const { error } = await supabase
+        .from('media_items')
+        .insert(newItem);
+      
+      if (error) throw error;
+      fetchMedia();
+    } catch (error) {
+      console.error('Failed to add recommendation to backlog:', error);
+      throw error;
+    }
+  };
+
   const handleUpdateMedia = async (item: Partial<MediaItem>) => {
     if (!isSupabaseConfigured) return;
     try {
@@ -414,111 +446,28 @@ const dateB = new Date(b.watchDate || b.endDate || b.dateAdded || 0).getTime() |
           <div className="text-right">Rating</div>
         </div>
 
-        {items.map((item, index) => {
+        {items.map((item) => {
           try {
             if (!item || !item.title) return null;
             const rawDate = item.watchDate || item.endDate || item.dateAdded;
-let date = new Date(rawDate || 0);
-if (isNaN(date.getTime())) {
-  date = new Date(0);
-}
-const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+            let date = new Date(rawDate || 0);
+            if (isNaN(date.getTime())) {
+              date = new Date(0);
+            }
+            const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'numeric' });
                    
             const isFirstInMonth = currentMonthYear !== lastMonthYear;
             lastMonthYear = currentMonthYear;
 
             return (
-              <React.Fragment key={item.id}>
-                {/* Mobile Month Divider */}
-                {isFirstInMonth && (
-                  <div className="md:hidden px-4 py-2 bg-white/5 border-y border-white/[0.05] text-[10px] font-bold text-primary-accent uppercase tracking-widest">
-                    {currentMonthYear}
-                  </div>
-                )}
-
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="flex md:grid md:grid-cols-[140px_60px_48px_1fr_120px] md:items-center px-4 md:px-6 py-4 hover:bg-white/5 transition-colors group border-b border-white/[0.02] gap-4 md:gap-0"
-                >
-                  {/* Desktop Period Column */}
-                  <div className="hidden md:block text-sm font-serif italic text-primary-accent">
-                    {isFirstInMonth ? currentMonthYear : ""}
-                  </div>
-                  
-                  {/* Day Column */}
-                  <div className="text-sm font-mono text-white w-8 md:w-auto shrink-0">
-                    {date.getDate().toString().padStart(2, '0')}
-                  </div>
-
-                  {/* Cover Art Thumbnail */}
-                  <div className="flex items-center justify-center shrink-0">
-                    {item.imageUrl ? (
-                      <img 
-                        src={item.imageUrl} 
-                        alt={item.title} 
-                        referrerPolicy="no-referrer"
-                        className="w-8 h-12 md:w-8 md:h-12 object-cover rounded shadow-lg shadow-black/40 border border-white/10"
-                      />
-                    ) : (
-                      <div className="w-8 h-12 bg-white/5 rounded border border-white/5 flex items-center justify-center text-zinc-300">
-                        {item.type === MediaType.MOVIE || item.type === MediaType.DOCUMENTARY ? <Film size={14} /> : 
-                         item.type === MediaType.SHOW ? <Tv size={14} /> :
-                         item.type === MediaType.BOOK ? <Book size={14} /> : <Gamepad2 size={14} />}
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Title & Rating Container */}
-                  <div className="flex-1 md:contents">
-                    <div className="flex flex-col md:flex-row md:items-start md:py-1 gap-1 md:gap-4">
-                      <div className="text-sm font-medium text-white group-hover:text-primary-accent transition-colors whitespace-normal break-words">
-                        {item.title}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2">
-                        {(item.startDate && item.endDate) && (
-                          <div className="text-[10px] text-white font-mono whitespace-nowrap">
-                            {new Date(item.startDate).toLocaleDateString()} – {new Date(item.endDate).toLocaleDateString()}
-                          </div>
-                        )}
-                        {(item.platform || item.console) && (
-                          <span className="text-[10px] text-zinc-500 uppercase tracking-widest">
-                            {item.platform || item.console}
-                          </span>
-                        )}
-                        {item.tags && (
-                          <div className="flex flex-wrap gap-1">
-                            {item.tags.split(',').map((tag, i) => (
-                              <span key={i} className="px-1.5 py-0.5 bg-primary-accent/10 border border-primary-accent/20 rounded text-[8px] font-bold text-primary-accent uppercase tracking-widest">
-                                {tag.trim()}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex md:justify-end items-center gap-2 mt-1 md:mt-0">
-                      <div className="flex gap-0.5">
-                        {[...Array(5)].map((_, i) => (
-                          <Star 
-                            key={i} 
-                            size={10}
-                            className={`${i < item.rating ? 'fill-primary-accent text-primary-accent' : 'text-zinc-700'}`} 
-                          />
-                        ))}
-                      </div>
-                      <button 
-                        onClick={() => setEditingItem(item)}
-                        className="p-1.5 text-zinc-400 hover:text-primary-accent transition-colors"
-                        title="Edit entry"
-                      >
-                        <Edit2 size={12} />
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              </React.Fragment>
+              <TrackerRow
+                key={item.id}
+                item={item}
+                isFirstInMonth={isFirstInMonth}
+                currentMonthYear={currentMonthYear}
+                date={date}
+                onEdit={setEditingItem}
+              />
             );
           } catch (err) {
             console.error("Error rendering item in list:", item, err);
@@ -588,20 +537,25 @@ const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'nu
           onItemClick={setEditingItem} 
         />
 
-        <div className="flex justify-end mb-4 mt-8 gap-4 font-sans">
-          <button
-            onClick={() => setViewMode('list')}
-            className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${viewMode === 'list' ? 'text-[#e7e7e7]' : 'text-[#576d87] hover:text-[#e7e7e7]'}`}
-          >
-            List
-          </button>
-          <span className="text-[#576d87]/30">/</span>
-          <button
-            onClick={() => setViewMode('mosaic')}
-            className={`text-[10px] font-bold uppercase tracking-widest transition-colors ${viewMode === 'mosaic' ? 'text-[#e7e7e7]' : 'text-[#576d87] hover:text-[#e7e7e7]'}`}
-          >
-            Mosaic
-          </button>
+        {/* Library subtitle and view mode switcher */}
+        <div className="flex justify-between items-center border-b border-[#576d87]/10 pb-2 mb-8 mt-12 font-sans">
+          <span className="text-[10px] uppercase tracking-widest font-bold text-white">Completed Archive</span>
+          
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`text-[9px] font-bold uppercase tracking-widest transition-colors ${viewMode === 'list' ? 'text-[#e7e7e7]' : 'text-[#576d87] hover:text-[#e7e7e7]'}`}
+            >
+              List
+            </button>
+            <span className="text-[#576d87]/20 text-[9px]">/</span>
+            <button
+              onClick={() => setViewMode('mosaic')}
+              className={`text-[9px] font-bold uppercase tracking-widest transition-colors ${viewMode === 'mosaic' ? 'text-[#e7e7e7]' : 'text-[#576d87] hover:text-[#e7e7e7]'}`}
+            >
+              Mosaic
+            </button>
+          </div>
         </div>
 
         <div className="overflow-hidden mb-24 font-sans">
@@ -609,7 +563,7 @@ const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'nu
             <div className="p-12 text-center text-zinc-300 animate-pulse">Loading your library...</div>
           ) : completedItems.length === 0 ? (
             <div className="p-24 text-center">
-              <p className="text-zinc-300">No completed entries found.</p>
+              <p className="text-[#576d87] text-xs italic">No completed entries found.</p>
             </div>
           ) : viewMode === 'mosaic' ? (
             <MosaicView 
@@ -737,149 +691,17 @@ const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'nu
   );
 
   const renderSettings = () => (
-    <div className="max-w-4xl mx-auto px-0 pb-24 font-sans">
-      <div className="mb-12">
-        <h1 className="text-2xl font-bold text-[#e7e7e7] mb-2 font-sans tracking-tight">Settings</h1>
-        <p className="text-[#576d87] text-xs uppercase tracking-wider">Manage your library and preferences.</p>
-      </div>
-
-      <div className="space-y-12">
-        <div className="py-6 border-b border-[#576d87]/10">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="w-10 h-10 bg-primary-accent/10 rounded-xl flex items-center justify-center text-primary-accent">
-              <Database size={20} />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-white uppercase tracking-widest">Data Management</h3>
-              <p className="text-xs text-white">Export or clear your library data.</p>
-            </div>
-          </div>
-          
-          <div className="space-y-4">
-            <button 
-              onClick={() => handleExportData()}
-              className="w-full flex items-center justify-between p-4 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors group"
-            >
-              <div className="flex flex-col items-start">
-                <span className="text-sm text-white group-hover:text-white">Export Library (JSON)</span>
-                <span className="text-[10px] text-zinc-500 uppercase tracking-widest">All Data</span>
-              </div>
-              <div className="text-white">→</div>
-            </button>
-            <button 
-              onClick={() => handleExportData(MediaStatus.COMPLETED)}
-              className="w-full flex items-center justify-between p-4 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors group"
-            >
-              <div className="flex flex-col items-start">
-                <span className="text-sm text-white group-hover:text-white">Export Tracker (JSON)</span>
-                <span className="text-[10px] text-zinc-500 uppercase tracking-widest">Completed Items</span>
-              </div>
-              <div className="text-white">→</div>
-            </button>
-            <button 
-              onClick={() => handleExportData(MediaStatus.PLANNED)}
-              className="w-full flex items-center justify-between p-4 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors group"
-            >
-              <div className="flex flex-col items-start">
-                <span className="text-sm text-white group-hover:text-white">Export Backlog (JSON)</span>
-                <span className="text-[10px] text-zinc-500 uppercase tracking-widest">Planned Items</span>
-              </div>
-              <div className="text-white">→</div>
-            </button>
-            <button 
-              onClick={() => jsonUploadRef.current?.click()}
-              className="w-full flex items-center justify-between p-4 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors group"
-            >
-              <div className="flex flex-col items-start">
-                <span className="text-sm text-white group-hover:text-white">Import Library (JSON)</span>
-                <span className="text-[10px] text-zinc-500 uppercase tracking-widest">Restore from export</span>
-              </div>
-              <div className="text-white">→</div>
-              <input 
-                type="file" 
-                ref={jsonUploadRef} 
-                onChange={handleJsonImportChange} 
-                accept=".json" 
-                className="hidden" 
-              />
-            </button>
-            <button 
-              onClick={() => {
-                setImportMode('library');
-                setIsImportModalOpen(true);
-              }}
-              className="w-full flex items-center justify-between p-4 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors group"
-            >
-              <span className="text-sm text-white group-hover:text-white">Import Library (CSV)</span>
-              <div className="text-white">→</div>
-            </button>
-            <button 
-              onClick={() => {
-                setImportMode('watchlist');
-                setIsImportModalOpen(true);
-              }}
-              className="w-full flex items-center justify-between p-4 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors group"
-            >
-              <div className="flex flex-col items-start">
-                <span className="text-sm text-white group-hover:text-white">Import Letterboxd Watchlist</span>
-                <span className="text-[10px] text-zinc-500 uppercase tracking-widest">Added to Backlog</span>
-              </div>
-              <div className="text-white">→</div>
-            </button>
-            <button 
-              onClick={() => handleClearData(MediaStatus.COMPLETED)}
-              className="w-full flex items-center justify-between p-4 bg-red-500/10 rounded-2xl hover:bg-red-500/20 transition-colors group"
-            >
-              <div className="flex flex-col items-start">
-                <span className="text-sm text-red-400 group-hover:text-red-300">Clear Tracker History</span>
-                <span className="text-[10px] text-red-400/60">Delete all completed items</span>
-              </div>
-              <Trash2 size={16} className="text-red-500/50" />
-            </button>
-            <button 
-              onClick={() => handleClearData(MediaStatus.PLANNED)}
-              className="w-full flex items-center justify-between p-4 bg-red-500/10 rounded-2xl hover:bg-red-500/20 transition-colors group"
-            >
-              <div className="flex flex-col items-start">
-                <span className="text-sm text-red-400 group-hover:text-red-300">Clear Backlog</span>
-                <span className="text-[10px] text-red-400/60">Delete all planned items</span>
-              </div>
-              <Trash2 size={16} className="text-red-500/50" />
-            </button>
-          </div>
-        </div>
-
-        <div className="py-6">
-          <div className="flex items-center gap-4 mb-6">
-            <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center text-[#e7e7e7]">
-              <Shield size={20} />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-white uppercase tracking-widest">Privacy & Security</h3>
-              <p className="text-xs text-[#576d87]">Control your tracking preferences.</p>
-            </div>
-          </div>
-          <div className="p-4 bg-white/5 rounded-xl">
-            <p className="text-xs text-[#e7e7e7] italic font-sans">Your data is stored securely in your private cloud database. You can export or clear your data at any time.</p>
-          </div>
-        </div>
-
-        <div className="pt-6">
-          <button 
-            onClick={handleSignOut}
-            className="w-full flex items-center justify-center gap-2 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl hover:bg-red-500/20 transition-all text-red-400 font-bold uppercase tracking-widest text-[10px]"
-          >
-            <LogOut size={16} />
-            Sign Out
-          </button>
-        </div>
-      </div>
-    </div>
+    <Settings
+      session={session}
+      mediaItems={mediaItems}
+      handleExportData={handleExportData}
+      handleClearData={handleClearData}
+      setImportMode={setImportMode}
+      setIsImportModalOpen={setIsImportModalOpen}
+      handleImport={handleImport}
+      fetchMedia={fetchMedia}
+    />
   );
-
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-  };
 
   if (!isSupabaseConfigured) {
     return (
@@ -972,6 +794,7 @@ const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'nu
             {activePage === 'tracker' && renderTracker()}
             {activePage === 'backlog' && renderBacklog()}
             {activePage === 'analytics' && renderAnalytics()}
+            {activePage === 'friends' && <FriendsView session={session} onAddToBacklog={handleAddToBacklog} />}
             {activePage === 'settings' && renderSettings()}
           </motion.div>
         </AnimatePresence>
