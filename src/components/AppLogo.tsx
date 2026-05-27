@@ -19,9 +19,12 @@ export const AppLogo: React.FC<AppLogoProps> = ({ className = "h-10 w-10", size 
     );
   }
 
+  // BASE_URL hängt automatisch '/Mosaic-Tracker/' (oder '/' lokal) davor
+  const logoPath = `${import.meta.env.BASE_URL}icons/apple-touch-icon.png`;
+
   return (
     <img 
-      src="/icons/apple-touch-icon.png" 
+      src={logoPath} 
       alt="App Logo" 
       width={size} 
       height={size} 
