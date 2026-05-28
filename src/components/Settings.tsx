@@ -373,12 +373,18 @@ export const Settings: React.FC<SettingsProps> = ({
       <div className="flex flex-col items-center justify-center pt-8 pb-12">
         <div className="relative group">
           <div className="h-24 w-24 rounded-full overflow-hidden bg-[#576d87] ring-4 ring-white/5 shadow-2xl flex-shrink-0 relative">
-            <img 
-              src={avatarUrl} 
-              alt="My Avatar" 
-              referrerPolicy="no-referrer"
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-            />
+            {avatarUrl ? (
+              <img 
+                src={avatarUrl} 
+                alt="My Avatar" 
+                referrerPolicy="no-referrer"
+                className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+              />
+            ) : (
+              <div className="h-full w-full bg-[#576d87] flex items-center justify-center text-white/40 text-xs font-mono uppercase font-semibold">
+                Loading
+              </div>
+            )}
             {uploading && (
               <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
                 <Loader2 className="animate-spin text-white w-5 h-5" />
@@ -447,12 +453,18 @@ export const Settings: React.FC<SettingsProps> = ({
                   className="flex items-center justify-between py-2 border-b border-white/[0.02]"
                 >
                   <div className="flex items-center gap-3">
-                    <img 
-                      src={user.avatar_url} 
-                      alt={user.username} 
-                      referrerPolicy="no-referrer"
-                      className="h-8 w-8 rounded-full object-cover bg-white/5" 
-                    />
+                    {user.avatar_url ? (
+                      <img 
+                        src={user.avatar_url} 
+                        alt={user.username} 
+                        referrerPolicy="no-referrer"
+                        className="h-8 w-8 rounded-full object-cover bg-white/5" 
+                      />
+                    ) : (
+                      <div className="h-8 w-8 rounded-full flex items-center justify-center bg-white/5 text-[10px] font-bold text-white/50">
+                        {user.username?.[0]?.toUpperCase() || 'U'}
+                      </div>
+                    )}
                     <span className="text-sm font-medium text-white">{user.username}</span>
                   </div>
                   <button
@@ -633,7 +645,28 @@ export const Settings: React.FC<SettingsProps> = ({
       {/* 5. Sign Out Session Button */}
       <div className="pt-8">
         <button 
-          onClick={() => supabase.auth.signOut()}
+          onClick={async () => {
+            try {
+              if (supabase?.auth) {
+                await supabase.auth.signOut();
+              }
+            } catch (err) {
+              console.error("Supabase signOut error:", err);
+            }
+            // Clear all local storage keys associated with supabase session for bulletproof iframe compatibility
+            try {
+              for (let i = localStorage.length - 1; i >= 0; i--) {
+                const key = localStorage.key(i);
+                if (key && (key.startsWith('sb-') || key.includes('supabase') || key.includes('session'))) {
+                  localStorage.removeItem(key);
+                }
+              }
+            } catch (storageErr) {
+              console.error("Local storage clear error:", storageErr);
+            }
+            // Force reload to completely reset all React app states and show the Auth screen
+            window.location.reload();
+          }}
           className="w-full flex items-center justify-center gap-2 py-4 bg-red-500/10 border border-red-500/20 rounded-2xl hover:bg-red-500/20 transition-all text-red-400 font-bold uppercase tracking-widest text-[10px]"
         >
           <LogOut size={16} />
