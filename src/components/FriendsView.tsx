@@ -37,53 +37,54 @@ export const FriendsView: React.FC<FriendsViewProps> = ({ session, onAddToBacklo
   const currentUserId = session?.user?.id;
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchFriendsFeed = async () => {
+const fetchFriendsFeed = async () => {
     if (!isSupabaseConfigured || !currentUserId) {
-      loadMockFeed();
+      setFeedItems([]);
+      setLoading(false);
       return;
     }
 
     try {
       setLoading(true);
 
-      // Step 1: Fetch all friend_ids from friendships where user_id === current_user_id
-      const { data: friendships, error: friendError } = await supabase
+      const { data: friends } = await supabase
         .from('friendships')
         .select('friend_id')
         .eq('user_id', currentUserId);
 
-      if (friendError) throw friendError;
-
-      const friendIds = friendships?.map(f => f.friend_id) || [];
-
+      const friendIds = friends?.map(f => f.friend_id) || [];
+      
       if (friendIds.length === 0) {
-        // Fallback to mock feed if the user has no friends in DB yet
-        loadMockFeed();
+        setFeedItems([]);
+        setLoading(false);
         return;
       }
 
-      // Step 2 & 3: Fetch media_items from friends with 'completed' status and join profile
-      const { data: mediaFeed, error: feedError } = await supabase
+      // 2. Hole die Medien UND die Profile der Freunde
+      const { data: feedData, error } = await supabase
         .from('media_items')
-        .select('*, profiles:user_id(username, avatar_url)')
-        .eq('status', 'completed')
+        .select(`
+          *,
+          profiles (
+            username,
+            avatar_url
+          )
+        `)
         .in('user_id', friendIds)
-        .order('dateCompleted', { ascending: false });
+        .eq('status', 'completed');
 
-      if (feedError) throw feedError;
-
-      if (!mediaFeed || mediaFeed.length === 0) {
-        loadMockFeed();
-        return;
+      if (error) {
+        console.error("Fehler beim Laden der Freunde:", error.message);
+        throw error;
       }
 
-      const formattedFeed: FriendsFeedItem[] = mediaFeed.map((item: any) => ({
+      const formattedFeed: FriendsFeedItem[] = (feedData || []).map((item: any) => ({
         id: item.id,
         title: item.title,
         type: item.type,
         status: item.status,
         imageUrl: item.imageUrl,
-        dateCompleted: item.dateCompleted || item.dateAdded || item.created_at,
+        dateCompleted: item.watchDate || item.endDate || item.dateCompleted || item.dateAdded || item.created_at,
         user_id: item.user_id,
         profiles: {
           username: item.profiles?.username || 'user',
@@ -91,87 +92,20 @@ export const FriendsView: React.FC<FriendsViewProps> = ({ session, onAddToBacklo
         }
       }));
 
+      // Client-seitige Sortierung nach dem berechneten dateCompleted absteigend
+      formattedFeed.sort((a, b) => {
+        const dateA = new Date(a.dateCompleted || 0).getTime() || 0;
+        const dateB = new Date(b.dateCompleted || 0).getTime() || 0;
+        return dateB - dateA;
+      });
+
       setFeedItems(formattedFeed);
     } catch (err) {
-      console.warn('Failed to load real friends feed, falling back to mock feed:', err);
-      loadMockFeed();
+      console.warn('Failed to load real friends feed:', err);
+      setFeedItems([]);
     } finally {
       setLoading(false);
     }
-  };
-
-  const loadMockFeed = () => {
-    // Generate high quality feed items with dateCompleted in May 2026 for mock experience
-    const mockData: FriendsFeedItem[] = [
-      {
-        id: 'mock-1',
-        title: 'Dune: Part Two',
-        type: MediaType.MOVIE,
-        status: MediaStatus.COMPLETED,
-        imageUrl: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=400&auto=format&fit=crop&q=80',
-        dateCompleted: '2026-05-25T14:30:00Z',
-        user_id: 'f-1',
-        profiles: {
-          username: 'alex_cinema',
-          avatar_url: 'https://api.dicebear.com/7.x/identicon/svg?seed=alex'
-        }
-      },
-      {
-        id: 'mock-2',
-        title: 'Spider-Man: Across the Spider-Verse',
-        type: MediaType.MOVIE,
-        status: MediaStatus.COMPLETED,
-        imageUrl: 'https://images.unsplash.com/photo-1635805737707-575885ab0820?w=400&auto=format&fit=crop&q=80',
-        dateCompleted: '2026-05-24T21:15:00Z',
-        user_id: 'f-2',
-        profiles: {
-          username: 'jules_tracker',
-          avatar_url: 'https://api.dicebear.com/7.x/identicon/svg?seed=jules'
-        }
-      },
-      {
-        id: 'mock-3',
-        title: 'Tomorrow, and Tomorrow, and Tomorrow',
-        type: MediaType.BOOK,
-        status: MediaStatus.COMPLETED,
-        imageUrl: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&auto=format&fit=crop&q=80',
-        dateCompleted: '2026-05-20T18:00:00Z',
-        user_id: 'f-3',
-        profiles: {
-          username: 'sophie_reads',
-          avatar_url: 'https://api.dicebear.com/7.x/identicon/svg?seed=sophie'
-        }
-      },
-      {
-        id: 'mock-4',
-        title: 'Hades II',
-        type: MediaType.GAME,
-        status: MediaStatus.COMPLETED,
-        imageUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=400&auto=format&fit=crop&q=80',
-        dateCompleted: '2026-05-15T23:00:00Z',
-        user_id: 'f-2',
-        profiles: {
-          username: 'jules_tracker',
-          avatar_url: 'https://api.dicebear.com/7.x/identicon/svg?seed=jules'
-        }
-      },
-      {
-        id: 'mock-5',
-        title: 'Everything Everywhere All at Once',
-        type: MediaType.MOVIE,
-        status: MediaStatus.COMPLETED,
-        imageUrl: 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=400&auto=format&fit=crop&q=80',
-        dateCompleted: '2026-05-11T12:45:00Z',
-        user_id: 'f-1',
-        profiles: {
-          username: 'alex_cinema',
-          avatar_url: 'https://api.dicebear.com/7.x/identicon/svg?seed=alex'
-        }
-      }
-    ];
-
-    setFeedItems(mockData);
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -254,8 +188,11 @@ export const FriendsView: React.FC<FriendsViewProps> = ({ session, onAddToBacklo
           <span className="text-xs font-mono uppercase tracking-widest">Gathering Friends Completed Archive</span>
         </div>
       ) : feedItems.length === 0 ? (
-        <div className="text-center py-20 text-[#576d87]">
-          <p className="text-sm italic">No social activity logged yet. Connect with friends in Settings.</p>
+        <div className="text-center py-24 px-6 text-[#576d87] border border-dashed border-[#576d87]/20 rounded-3xl bg-white/[0.01]">
+          <p className="text-sm font-medium text-zinc-300 mb-2 font-sans">Keine Aktivitäten gefunden</p>
+          <p className="text-xs text-[#576d87] max-w-sm mx-auto leading-relaxed font-sans">
+            Es sind bisher noch keine Aktivitäten im Feed vorhanden. Du kannst in den Einstellungen neue Freunde hinzufügen, um deren Updates hier zu sehen.
+          </p>
         </div>
       ) : (
         (Object.entries(groupedItems) as [string, FriendsFeedItem[]][]).map(([monthYear, monthItems]) => (

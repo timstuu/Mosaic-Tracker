@@ -102,7 +102,7 @@ export const Settings: React.FC<SettingsProps> = ({
         try {
           const { data, error } = await supabase
             .from('friendships')
-            .select('friend_id, profiles:friend_id(username, avatar_url)')
+            .select('friend_id, profiles!friendships_friend_id_fkey(username, avatar_url)')
             .eq('user_id', userId);
           
           if (!error && data) {
@@ -204,7 +204,6 @@ export const Settings: React.FC<SettingsProps> = ({
       setSearchResults([]);
       return;
     }
-
     setSearching(true);
     
     // Attempt real database query against Supabase profiles
@@ -263,18 +262,26 @@ export const Settings: React.FC<SettingsProps> = ({
 
     if (isSupabaseConfigured && userId) {
       try {
-        await supabase
+        const { error } = await supabase
           .from('friendships')
           .insert({
             user_id: userId,
             friend_id: profile.id,
             status: 'accepted'
           });
+          
+        // WICHTIG: Wenn die DB den Eintrag ablehnt, brechen wir hier ab!
+        if (error) {
+          console.error("Datenbank-Fehler beim Hinzufügen:", error.message);
+          return; 
+        }
       } catch (err) {
         console.warn('Supabase insert friendship failed:', err);
+        return;
       }
     }
 
+    // Nur wenn Supabase es akzeptiert hat, speichern wir es lokal
     const updated = [...friends, profile];
     setFriends(updated);
     if (userId) {
