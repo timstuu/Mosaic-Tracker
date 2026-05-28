@@ -121,12 +121,16 @@ export default function App() {
       });
       
       const normalizedData = filteredData.map(item => {
-  // Nimmt den Status exakt so, wie er aus der Datenbank kommt.
-  // Falls doch mal einer leer sein sollte, ist der Fallback 'planned'.
-  let status = item.status?.toLowerCase().trim() || MediaStatus.PLANNED;
-  
-  return { ...item, status };
-});
+        let status = item.status?.toLowerCase().trim() || MediaStatus.PLANNED;
+        return { 
+          ...item, 
+          status,
+          currentSeason: item.current_season !== undefined && item.current_season !== null ? item.current_season : (item.currentSeason ?? 1),
+          currentEpisode: item.current_episode !== undefined && item.current_episode !== null ? item.current_episode : (item.currentEpisode ?? 0),
+          totalSeasons: item.total_seasons !== undefined && item.total_seasons !== null ? item.total_seasons : (item.totalSeasons ?? 1),
+          totalEpisodes: item.total_episodes !== undefined && item.total_episodes !== null ? item.total_episodes : (item.totalEpisodes ?? 0),
+        };
+      });
       
       setMediaItems(normalizedData);
     } catch (error) {
@@ -226,7 +230,18 @@ export default function App() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No user logged in');
 
-      const itemWithUser = { ...item, user_id: user.id };
+      const dbItem: any = { ...item };
+      if (item.currentSeason !== undefined) dbItem.current_season = item.currentSeason;
+      if (item.currentEpisode !== undefined) dbItem.current_episode = item.currentEpisode;
+      if (item.totalSeasons !== undefined) dbItem.total_seasons = item.totalSeasons;
+      if (item.totalEpisodes !== undefined) dbItem.total_episodes = item.totalEpisodes;
+
+      delete dbItem.currentSeason;
+      delete dbItem.currentEpisode;
+      delete dbItem.totalSeasons;
+      delete dbItem.totalEpisodes;
+
+      const itemWithUser = { ...dbItem, user_id: user.id };
 
       const { error } = await supabase
         .from('media_items')
@@ -274,7 +289,18 @@ export default function App() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('No user logged in');
 
-      const itemWithUser = { ...item, user_id: user.id };
+      const dbItem: any = { ...item };
+      if (item.currentSeason !== undefined) dbItem.current_season = item.currentSeason;
+      if (item.currentEpisode !== undefined) dbItem.current_episode = item.currentEpisode;
+      if (item.totalSeasons !== undefined) dbItem.total_seasons = item.totalSeasons;
+      if (item.totalEpisodes !== undefined) dbItem.total_episodes = item.totalEpisodes;
+
+      delete dbItem.currentSeason;
+      delete dbItem.currentEpisode;
+      delete dbItem.totalSeasons;
+      delete dbItem.totalEpisodes;
+
+      const itemWithUser = { ...dbItem, user_id: user.id };
 
       const { error } = await supabase
         .from('media_items')
@@ -286,6 +312,49 @@ export default function App() {
       fetchMedia();
     } catch (error) {
       console.error('Failed to update media:', error);
+    }
+  };
+
+  const handleIncrementEpisode = async (item: MediaItem) => {
+    if (!isSupabaseConfigured) return;
+    
+    const nextEpisode = (item.currentEpisode ?? 0) + 1;
+    let newStatus = item.status;
+    let finishedDate = item.endDate;
+
+    // Automated transition: If nextEpisode reaches totalEpisodes, transition to completed
+    if (item.totalEpisodes && nextEpisode >= item.totalEpisodes) {
+      newStatus = MediaStatus.COMPLETED;
+      finishedDate = new Date().toISOString().split('T')[0];
+    }
+
+    const updatedProps: Partial<MediaItem> = {
+      currentEpisode: nextEpisode,
+      status: newStatus,
+      endDate: finishedDate,
+    };
+
+    // Optimistic state update
+    setMediaItems(prevItems => 
+      prevItems.map(i => i.id === item.id ? { ...i, ...updatedProps } : i)
+    );
+
+    try {
+      // Direct db sync
+      const { error } = await supabase
+        .from('media_items')
+        .update({
+          current_episode: nextEpisode,
+          status: newStatus,
+          "endDate": finishedDate,
+        })
+        .eq('id', item.id);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Failed to sync inline episode increment to Supabase:', error);
+      // Fallback reload if there is any error
+      fetchMedia();
     }
   };
 
@@ -535,6 +604,7 @@ const dateB = new Date(b.watchDate || b.endDate || b.dateAdded || 0).getTime() |
         <ActiveMediaShelf 
           items={activeItems} 
           onItemClick={setEditingItem} 
+          onIncrementEpisode={handleIncrementEpisode}
         />
 
         {/* Library subtitle and view mode switcher */}

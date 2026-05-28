@@ -31,6 +31,10 @@ export interface MediaItem {
   imageUrl?: string;
   tags?: string;
   isbn?: string;
+  currentSeason?: number;
+  currentEpisode?: number;
+  totalSeasons?: number;
+  totalEpisodes?: number;
 }
 
 export type ViewType = 'landing' | 'tracker' | 'archive' | 'analytics';

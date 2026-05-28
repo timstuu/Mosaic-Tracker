@@ -1,14 +1,15 @@
 import React from 'react';
 import { MediaItem, MediaType } from '../types';
 import { motion } from 'motion/react';
-import { Tv, Book, Gamepad2, Play } from 'lucide-react';
+import { Tv, Book, Gamepad2, Play, Plus } from 'lucide-react';
 
 interface ActiveMediaShelfProps {
   items: MediaItem[];
   onItemClick: (item: MediaItem) => void;
+  onIncrementEpisode?: (item: MediaItem) => void;
 }
 
-export const ActiveMediaShelf: React.FC<ActiveMediaShelfProps> = ({ items, onItemClick }) => {
+export const ActiveMediaShelf: React.FC<ActiveMediaShelfProps> = ({ items, onItemClick, onIncrementEpisode }) => {
   const activeItems = items;
 
   if (activeItems.length === 0) return null;
@@ -29,6 +30,17 @@ export const ActiveMediaShelf: React.FC<ActiveMediaShelfProps> = ({ items, onIte
       case MediaType.GAME: return 'Playing';
       default: return 'Active';
     }
+  };
+
+  const formatProgress = (item: MediaItem) => {
+    const s = String(item.currentSeason ?? 1).padStart(2, '0');
+    const e = String(item.currentEpisode ?? 0).padStart(2, '0');
+    let pctStr = '';
+    if (item.totalEpisodes && item.totalEpisodes > 0) {
+      const pct = Math.round(((item.currentEpisode ?? 0) / item.totalEpisodes) * 100);
+      pctStr = ` • ${pct}% completed`;
+    }
+    return `S${s}E${e}${pctStr}`;
   };
 
   return (
@@ -65,7 +77,7 @@ export const ActiveMediaShelf: React.FC<ActiveMediaShelfProps> = ({ items, onIte
                 )}
                 
                 {/* Overlay gradient mask */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/45 to-transparent opacity-85 group-hover:opacity-95 transition-opacity" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-transparent opacity-85 group-hover:opacity-95 transition-opacity" />
                 
                 {/* Active status top badge */}
                 <div className="absolute top-1.5 left-1.5 md:top-2.5 md:left-2.5 bg-black/70 backdrop-blur-md px-1.5 py-0.5 md:px-2 md:py-1 rounded-md flex items-center gap-1 border border-white/10 z-10">
@@ -75,16 +87,34 @@ export const ActiveMediaShelf: React.FC<ActiveMediaShelfProps> = ({ items, onIte
                   </span>
                 </div>
 
+                {/* Micro-interaction: Increment Episode by 1 (+1 Ep) */}
+                {item.type === MediaType.SHOW && onIncrementEpisode && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onIncrementEpisode(item);
+                    }}
+                    className="absolute top-1.5 right-1.5 md:top-2.5 md:right-2.5 bg-black/70 backdrop-blur-md p-1.5 md:p-2 rounded-md border border-white/10 hover:bg-primary-accent hover:border-primary-accent text-zinc-400 hover:text-app-bg transition-all z-20 group/btn select-none shadow-md"
+                    title="Next Episode (+1)"
+                  >
+                    <Plus size={11} className="md:w-3.5 md:h-3.5 transition-transform group-hover/btn:rotate-90" />
+                  </button>
+                )}
+ 
                 {/* Typography Bottom Overlay */}
                 <div className="absolute bottom-0 left-0 right-0 p-2 md:p-3 z-10 flex flex-col justify-end">
                   <h3 className="font-bold text-white text-[10px] sm:text-xs md:text-sm line-clamp-2 group-hover:text-primary-accent transition-colors leading-tight">
                     {item.title}
                   </h3>
-                  {(item.platform || item.console) && (
+                  {item.type === MediaType.SHOW ? (
+                    <p className="text-[8px] sm:text-[9px] md:text-[10px] font-mono mt-1 text-[#576d87] tracking-tight">
+                      {formatProgress(item)}
+                    </p>
+                  ) : (item.platform || item.console) ? (
                     <p className="text-[8px] sm:text-[10px] md:text-xs text-zinc-400 mt-0.5 line-clamp-1">
                       {item.platform || item.console}
                     </p>
-                  )}
+                  ) : null}
                 </div>
               </motion.div>
             );

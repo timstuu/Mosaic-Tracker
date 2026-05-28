@@ -28,6 +28,12 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
   const [isbn, setIsbn] = useState(item.isbn || '');
   const [isDnf, setIsDnf] = useState(item.status === MediaStatus.DNF);
 
+  // TV progress state variables
+  const [currentSeason, setCurrentSeason] = useState(item.currentSeason || 1);
+  const [currentEpisode, setCurrentEpisode] = useState(item.currentEpisode || 0);
+  const [totalSeasons, setTotalSeasons] = useState(item.totalSeasons || 1);
+  const [totalEpisodes, setTotalEpisodes] = useState(item.totalEpisodes || 0);
+
   const isVisualMedia = [MediaType.MOVIE, MediaType.DOCUMENTARY].includes(type);
   const isInteractiveMedia = [MediaType.BOOK, MediaType.GAME, MediaType.SHOW].includes(type);
 
@@ -79,6 +85,10 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
       endDate: [MediaType.BOOK, MediaType.GAME, MediaType.SHOW].includes(type) ? (endDate || undefined) : undefined,
       platform: [MediaType.MOVIE, MediaType.SHOW, MediaType.DOCUMENTARY].includes(type) ? platform : undefined,
       console: type === MediaType.GAME ? consoleName : undefined,
+      currentSeason: type === MediaType.SHOW ? currentSeason : undefined,
+      currentEpisode: type === MediaType.SHOW ? currentEpisode : undefined,
+      totalSeasons: type === MediaType.SHOW ? totalSeasons : undefined,
+      totalEpisodes: type === MediaType.SHOW ? totalEpisodes : undefined,
     };
     onSave(updatedItem);
   };
@@ -284,6 +294,39 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                         <span>{isDnf ? 'Did Not Finish (DNF)' : 'Mark as "Did Not Finish" (DNF)'}</span>
                       </button>
                     </div>
+
+                    {type === MediaType.SHOW && startDate && !endDate && (
+                      <div className="pt-3 pb-2 px-4 bg-app-bg/50 border border-white/5 rounded-xl space-y-1.5">
+                        <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                          Show Progress (Watching)
+                        </label>
+                        <div className="flex items-center gap-1.5 text-sm text-zinc-300">
+                          <span className="text-[11px] text-[#576d87] font-semibold uppercase tracking-wider">Season</span>
+                          <input
+                            type="number"
+                            min={1}
+                            max={totalSeasons || 50}
+                            value={currentSeason}
+                            onChange={(e) => setCurrentSeason(Math.max(1, parseInt(e.target.value) || 1))}
+                            className="w-10 bg-transparent text-center border-b border-transparent hover:border-white/20 focus:border-primary-accent focus:outline-none text-white font-mono text-xs py-0.5"
+                          />
+                          <span className="text-[#576d87]/30 text-xs">/</span>
+                          <span className="text-zinc-400 font-mono text-xs w-4">{totalSeasons || 1}</span>
+                          
+                          <span className="text-[11px] text-[#576d87] font-semibold uppercase tracking-wider ml-3">Episode</span>
+                          <input
+                            type="number"
+                            min={0}
+                            max={totalEpisodes || 1000}
+                            value={currentEpisode}
+                            onChange={(e) => setCurrentEpisode(Math.max(0, parseInt(e.target.value) || 0))}
+                            className="w-12 bg-transparent text-center border-b border-transparent hover:border-white/20 focus:border-primary-accent focus:outline-none text-white font-mono text-xs py-0.5"
+                          />
+                          <span className="text-[#576d87]/30 text-xs">/</span>
+                          <span className="text-zinc-400 font-mono text-xs w-16">{totalEpisodes || 'N/A'} Episodes</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

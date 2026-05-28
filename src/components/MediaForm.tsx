@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Film, Tv, Book, Gamepad2, Star, Calendar, Monitor, Cpu } from 'lucide-react';
 import { MediaType, MediaItem, MediaStatus } from '../types';
+import { searchTVShows, fetchTVShowDetails, TMDbShowSearchResult } from '../services/tmdbService';
 
 interface MediaFormProps {
   onClose: () => void;
@@ -20,8 +21,40 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
   const [notes, setNotes] = useState('');
   const [isDnf, setIsDnf] = useState(false);
 
+  // New states for TV show tracking
+  const [currentSeason, setCurrentSeason] = useState(1);
+  const [currentEpisode, setCurrentEpisode] = useState(0);
+  const [totalSeasons, setTotalSeasons] = useState(1);
+  const [totalEpisodes, setTotalEpisodes] = useState(0);
+  const [imageUrl, setImageUrl] = useState('');
+
+  // Suggestions state
+  const [suggestions, setSuggestions] = useState<TMDbShowSearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+
   const isVisualMedia = [MediaType.MOVIE, MediaType.DOCUMENTARY].includes(type);
   const isInteractiveMedia = [MediaType.BOOK, MediaType.GAME, MediaType.SHOW].includes(type);
+
+
+  const handleSelectShow = async (showToSelect: TMDbShowSearchResult) => {
+    setTitle(showToSelect.name);
+    setSuggestions([]);
+    setSearching(true);
+    try {
+      const details = await fetchTVShowDetails(showToSelect.id);
+      if (details) {
+        setTotalSeasons(details.totalSeasons);
+        setTotalEpisodes(details.totalEpisodes);
+        if (details.imageUrl) {
+          setImageUrl(details.imageUrl);
+        }
+      }
+    } catch (e) {
+      console.error('Error fetching TV show details:', e);
+    } finally {
+      setSearching(false);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,6 +88,11 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
       endDate: isInteractiveMedia ? (endDate || undefined) : undefined,
       platform: [MediaType.MOVIE, MediaType.SHOW, MediaType.DOCUMENTARY].includes(type) ? (platform || undefined) : undefined,
       console: type === MediaType.GAME ? (consoleName || undefined) : undefined,
+      currentSeason: type === MediaType.SHOW ? currentSeason : undefined,
+      currentEpisode: type === MediaType.SHOW ? currentEpisode : undefined,
+      totalSeasons: type === MediaType.SHOW ? totalSeasons : undefined,
+      totalEpisodes: type === MediaType.SHOW ? totalEpisodes : undefined,
+      imageUrl: imageUrl || undefined,
     };
     onSave(newItem);
   };
@@ -105,16 +143,68 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
           </div>
 
           <div className="space-y-4">
-            <div>
+            <div className="relative">
               <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Title</label>
               <input
                 required
                 type="text"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setTitle(val);
+                  if (type === MediaType.SHOW && val.trim().length >= 2) {
+                    setSearching(true);
+                    searchTVShows(val).then((res) => {
+                      setSuggestions(res.slice(0, 5));
+                      setSearching(false);
+                    }).catch(() => {
+                      setSearching(false);
+                    });
+                  } else {
+                    setSuggestions([]);
+                  }
+                }}
                 placeholder="Enter title..."
                 className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
+                autoComplete="off"
               />
+
+              {type === MediaType.SHOW && (suggestions.length > 0 || searching) && (
+                <div className="absolute left-0 right-0 mt-1 bg-secondary-accent border border-white/10 rounded-xl overflow-hidden shadow-2xl z-55 max-h-60 overflow-y-auto">
+                  {searching && suggestions.length === 0 ? (
+                    <div className="px-4 py-3 text-xs text-[#576d87] animate-pulse">Searching TMDb...</div>
+                  ) : (
+                    suggestions.map((show) => (
+                      <div
+                        key={show.id}
+                        onClick={() => handleSelectShow(show)}
+                        className="px-4 py-3 border-b border-white/[0.03] last:border-0 hover:bg-white/5 cursor-pointer flex items-center gap-3 transition-colors text-xs text-white"
+                      >
+                        {show.poster_path ? (
+                          <img 
+                            src={`https://image.tmdb.org/t/p/w92${show.poster_path}`} 
+                            alt={show.name} 
+                            referrerPolicy="no-referrer"
+                            className="w-6 h-9 object-cover rounded shadow"
+                          />
+                        ) : (
+                          <div className="w-6 h-9 bg-white/5 rounded flex items-center justify-center text-zinc-500 shrink-0">
+                            <Tv size={12} />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <span className="font-semibold block truncate text-sm">{show.name}</span>
+                          {show.first_air_date && (
+                            <span className="text-[10px] text-[#576d87] block font-mono mt-0.5">
+                              {new Date(show.first_air_date).getFullYear()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
 
 
@@ -207,6 +297,39 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
                         <span>{isDnf ? 'Did Not Finish (DNF)' : 'Mark as "Did Not Finish" (DNF)'}</span>
                       </button>
                     </div>
+
+                    {type === MediaType.SHOW && startDate && !endDate && (
+                      <div className="pt-3 pb-2 px-4 bg-app-bg/50 border border-white/5 rounded-xl space-y-1.5">
+                        <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                          Show Progress (Watching)
+                        </label>
+                        <div className="flex items-center gap-1.5 text-sm text-zinc-300">
+                          <span className="text-[11px] text-[#576d87] font-semibold uppercase tracking-wider">Season</span>
+                          <input
+                            type="number"
+                            min={1}
+                            max={totalSeasons || 50}
+                            value={currentSeason}
+                            onChange={(e) => setCurrentSeason(Math.max(1, parseInt(e.target.value) || 1))}
+                            className="w-10 bg-transparent text-center border-b border-transparent hover:border-white/20 focus:border-primary-accent focus:outline-none text-white font-mono text-xs py-0.5"
+                          />
+                          <span className="text-[#576d87]/30 text-xs">/</span>
+                          <span className="text-zinc-400 font-mono text-xs w-4">{totalSeasons || 1}</span>
+                          
+                          <span className="text-[11px] text-[#576d87] font-semibold uppercase tracking-wider ml-3">Episode</span>
+                          <input
+                            type="number"
+                            min={0}
+                            max={totalEpisodes || 1000}
+                            value={currentEpisode}
+                            onChange={(e) => setCurrentEpisode(Math.max(0, parseInt(e.target.value) || 0))}
+                            className="w-12 bg-transparent text-center border-b border-transparent hover:border-white/20 focus:border-primary-accent focus:outline-none text-white font-mono text-xs py-0.5"
+                          />
+                          <span className="text-[#576d87]/30 text-xs">/</span>
+                          <span className="text-zinc-400 font-mono text-xs">{totalEpisodes || 'N/A'} Episodes</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
