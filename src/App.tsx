@@ -605,6 +605,7 @@ const dateB = new Date(b.watchDate || b.endDate || b.dateAdded || 0).getTime() |
           items={activeItems} 
           onItemClick={setEditingItem} 
           onIncrementEpisode={handleIncrementEpisode}
+          onUpdateMedia={handleUpdateMedia}
         />
 
         {/* Library subtitle and view mode switcher */}
