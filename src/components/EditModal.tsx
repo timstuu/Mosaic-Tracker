@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Film, Tv, Book, Gamepad2, Star, Calendar, Monitor, Cpu } from 'lucide-react';
 import { MediaType, MediaStatus, MediaItem } from '../types';
-import { fetchMediaPoster } from '../services/tmdbService';
+import { fetchMediaPoster, fetchSimilarRecommendations, TMDbRecommendation } from '../services/tmdbService';
 import { fetchBookCover } from '../services/bookService';
 import { fetchGameCover } from '../services/gameService';
 
@@ -52,6 +52,43 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
       derivedStatus = MediaStatus.ACTIVE;
     }
   }
+
+  const [recommendations, setRecommendations] = useState<TMDbRecommendation[]>([]);
+  const [loadingRecs, setLoadingRecs] = useState<boolean>(false);
+
+  useEffect(() => {
+    let active = true;
+    if (!title || !['movie', 'show', 'documentary'].includes(type)) {
+      setRecommendations([]);
+      return;
+    }
+
+    const loadRecommendations = async () => {
+      setLoadingRecs(true);
+      try {
+        const recType = type === 'show' ? 'show' : 'movie';
+        const fetched = await fetchSimilarRecommendations(title, recType);
+        if (active) {
+          setRecommendations(fetched);
+        }
+      } catch (err) {
+        console.error('Error fetching similar recommendations:', err);
+      } finally {
+        if (active) {
+          setLoadingRecs(false);
+        }
+      }
+    };
+
+    const timer = setTimeout(() => {
+      loadRecommendations();
+    }, 600);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [title, type]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -394,6 +431,106 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                 className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors resize-none"
               />
             </div>
+
+            {/* TMDB Recommendations shelf */}
+            {['movie', 'show', 'documentary'].includes(type) && (
+              <div className="space-y-3 pt-6 border-t border-white/5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="block text-xs font-bold text-white uppercase tracking-widest">
+                      Recommended Similar Titles
+                    </label>
+                    <p className="text-[9.5px] text-[#576d87] font-semibold mt-0.5">
+                      Based on current genre tags and title
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-mono text-[#576d87]/80 uppercase font-semibold">
+                    TMDB API
+                  </span>
+                </div>
+
+                {loadingRecs ? (
+                  <div className="flex flex-col items-center justify-center py-10 bg-app-bg/30 border border-white/5 rounded-2xl text-zinc-500 gap-2">
+                    <div className="w-5 h-5 border-2 border-primary-accent border-t-transparent rounded-full animate-spin" />
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-[#576d87]">Querying Similar Titles...</span>
+                  </div>
+                ) : recommendations.length > 0 ? (
+                  <div className="flex gap-4 overflow-x-auto pb-3 pt-1 snap-x scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10 scroll-smooth">
+                    {recommendations.map((rec) => {
+                      const userTagList = tags.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+                      const isGenreMatch = userTagList.some(tag => 
+                        rec.title.toLowerCase().includes(tag) || 
+                        rec.overview?.toLowerCase().includes(tag)
+                      );
+
+                      return (
+                        <div 
+                          key={rec.id}
+                          className="w-[125px] flex-shrink-0 flex flex-col gap-1.5 snap-start group relative"
+                        >
+                          <div className="relative aspect-[2/3] w-full rounded-xl overflow-hidden bg-white/5 border border-white/10 bg-zinc-900/50">
+                            {rec.posterUrl ? (
+                              <img 
+                                src={rec.posterUrl} 
+                                alt={rec.title} 
+                                referrerPolicy="no-referrer"
+                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-[9px] text-[#576d87] font-mono text-center px-1">
+                                No Cover
+                              </div>
+                            )}
+
+                            {isGenreMatch && (
+                              <div className="absolute top-1 right-1 bg-emerald-500/95 text-app-bg text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded shadow">
+                                Match
+                              </div>
+                            )}
+
+                            {rec.rating && rec.rating > 0 && (
+                              <div className="absolute bottom-1 left-1 bg-black/80 text-amber-400 text-[8px] font-mono font-bold px-1.5 py-0.5 rounded border border-white/5">
+                                ★ {rec.rating.toFixed(1)}
+                              </div>
+                            )}
+                          </div>
+                          <div className="space-y-1 min-w-0">
+                            <h4 
+                              className="text-[11px] font-semibold text-white/90 truncate group-hover:text-primary-accent transition-colors" 
+                              title={rec.title}
+                            >
+                              {rec.title}
+                            </h4>
+                            {rec.releaseDate && (
+                              <p className="text-[9.5px] text-[#576d87] font-mono">
+                                {rec.releaseDate.split('-')[0]}
+                              </p>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (window.confirm(`Möchtest du das aktuelle Medium zu "${rec.title}" ändern?`)) {
+                                  setTitle(rec.title);
+                                }
+                              }}
+                              className="w-full py-1 bg-white/5 hover:bg-primary-accent/15 rounded-lg text-[9px] font-bold uppercase tracking-widest text-[#576d87] hover:text-primary-accent transition-all text-center border border-white/5 hover:border-primary-accent/20"
+                            >
+                              Adopt
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="bg-[#242d3a]/60 border border-white/5 rounded-2xl p-4 text-center">
+                    <p className="text-[#576d87] text-xs italic font-sans font-medium">
+                      No similar titles could be matched for "{title}".
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="pt-4 flex flex-col sm:flex-row gap-3">

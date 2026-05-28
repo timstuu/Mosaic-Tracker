@@ -81,18 +81,19 @@ export default function App() {
       });
 
       // Listen for auth changes
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
-        setSession(session);
-        if (session) {
-          fetchMedia();
-          fetchChallenges();
-        } else {
-          setMediaItems([]);
-          setChallenges([]);
-          setLoading(false);
-        }
-      });
-
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, currentSession: any) => {
+      // NUR triggern, wenn sich der Session-Status wirklich geändert hat!
+      if (currentSession && (!session || currentSession.user.id !== session.user?.id)) {
+        setSession(currentSession);
+        fetchMedia();
+        fetchChallenges();
+      } else if (!currentSession) {
+        setSession(null);
+        setMediaItems([]);
+        setChallenges([]);
+        setLoading(false);
+      }
+    });
       return () => subscription.unsubscribe();
     } else {
       setLoading(false);
@@ -105,9 +106,10 @@ export default function App() {
       const { data: { session } } = await supabase.auth.getSession();
       const currentUserId = session?.user?.id;
 
-      const { data, error } = await supabase
-        .from('media_items')
-        .select('*');
+      // Optimierter Daten-Fetch in src/App.tsx
+const { data, error } = await supabase
+  .from('media_items')
+  .select('id, title, type, status, rating, watchDate, endDate, dateAdded, imageUrl, tags, platform, console, notes, user_id');
       
       if (error) throw error;
       

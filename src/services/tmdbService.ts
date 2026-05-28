@@ -102,3 +102,77 @@ export async function fetchTVShowDetails(id: number): Promise<TMDbShowDetails | 
   }
 }
 
+export interface TMDbRecommendation {
+  id: number;
+  title: string;
+  posterUrl?: string;
+  releaseDate?: string;
+  rating?: number;
+  overview?: string;
+}
+
+export async function fetchSimilarRecommendations(
+  title: string,
+  type: 'movie' | 'show' | 'documentary'
+): Promise<TMDbRecommendation[]> {
+  if (!TMDB_API_KEY) {
+    console.warn('TMDB API Key missing. Please set VITE_TMDB_API_KEY in your environment.');
+    return [];
+  }
+
+  try {
+    const searchType = type === 'show' ? 'tv' : 'movie';
+    // 1. Search for the item to find its TMDB ID
+    const searchResponse = await fetch(
+      `${BASE_URL}/search/${searchType}?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(title)}`
+    );
+    
+    if (!searchResponse.ok) {
+      throw new Error(`TMDB Search API error: ${searchResponse.status}`);
+    }
+
+    const searchData = await searchResponse.json();
+    if (!searchData.results || searchData.results.length === 0) {
+      return [];
+    }
+
+    const targetId = searchData.results[0].id;
+
+    // 2. Fetch recommendations for this ID
+    const recommendationsResponse = await fetch(
+      `${BASE_URL}/${searchType}/${targetId}/recommendations?api_key=${TMDB_API_KEY}`
+    );
+    
+    let results: any[] = [];
+    if (recommendationsResponse.ok) {
+      const recData = await recommendationsResponse.json();
+      results = recData.results || [];
+    }
+
+    // Try falling back to /similar if no recommendations are found
+    if (results.length === 0) {
+      const similarResponse = await fetch(
+        `${BASE_URL}/${searchType}/${targetId}/similar?api_key=${TMDB_API_KEY}`
+      );
+      if (similarResponse.ok) {
+        const simData = await similarResponse.json();
+        results = simData.results || [];
+      }
+    }
+
+    return results.slice(0, 6).map((item: any) => ({
+      id: item.id,
+      title: item.title || item.name || '',
+      posterUrl: item.poster_path ? `${IMAGE_BASE_URL}${item.poster_path}` : undefined,
+      releaseDate: item.release_date || item.first_air_date || '',
+      rating: item.vote_average,
+      overview: item.overview || ''
+    }));
+
+  } catch (error) {
+    console.error('Error fetching similar recommendations from TMDB:', error);
+    return [];
+  }
+}
+
+

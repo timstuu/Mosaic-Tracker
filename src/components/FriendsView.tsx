@@ -29,6 +29,7 @@ interface FriendsViewProps {
 export const FriendsView: React.FC<FriendsViewProps> = ({ session, onAddToBacklog }) => {
   const [feedItems, setFeedItems] = useState<FriendsFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<FriendsFeedItem | null>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [addingId, setAddingId] = useState<string | null>(null);
@@ -37,7 +38,7 @@ export const FriendsView: React.FC<FriendsViewProps> = ({ session, onAddToBacklo
   const currentUserId = session?.user?.id;
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
-const fetchFriendsFeed = async () => {
+  const fetchFriendsFeed = async () => {
     if (!isSupabaseConfigured || !currentUserId) {
       setFeedItems([]);
       setLoading(false);
@@ -46,22 +47,40 @@ const fetchFriendsFeed = async () => {
 
     try {
       setLoading(true);
+      setError(null);
 
-      const { data: friends } = await supabase
+      // Pre-load from local storage cache to ensure immediate and offline content
+      const cached = localStorage.getItem(`friends_feed_${currentUserId}`);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setFeedItems(parsed);
+          }
+        } catch (_) {}
+      }
+
+      // Check friendship connections with a timeout capability
+      const { data: friends, error: friendsError } = await supabase
         .from('friendships')
         .select('friend_id')
         .eq('user_id', currentUserId);
+
+      if (friendsError) {
+        throw friendsError;
+      }
 
       const friendIds = friends?.map(f => f.friend_id) || [];
       
       if (friendIds.length === 0) {
         setFeedItems([]);
+        localStorage.setItem(`friends_feed_${currentUserId}`, JSON.stringify([]));
         setLoading(false);
         return;
       }
 
-      // 2. Hole die Medien UND die Profile der Freunde
-      const { data: feedData, error } = await supabase
+      // 2. Fetch friend media completions
+      const { data: feedData, error: mediaError } = await supabase
         .from('media_items')
         .select(`
           *,
@@ -73,9 +92,8 @@ const fetchFriendsFeed = async () => {
         .in('user_id', friendIds)
         .eq('status', 'completed');
 
-      if (error) {
-        console.error("Fehler beim Laden der Freunde:", error.message);
-        throw error;
+      if (mediaError) {
+        throw mediaError;
       }
 
       const formattedFeed: FriendsFeedItem[] = (feedData || []).map((item: any) => ({
@@ -92,7 +110,7 @@ const fetchFriendsFeed = async () => {
         }
       }));
 
-      // Client-seitige Sortierung nach dem berechneten dateCompleted absteigend
+      // Client-side descending sort by dateCompleted
       formattedFeed.sort((a, b) => {
         const dateA = new Date(a.dateCompleted || 0).getTime() || 0;
         const dateB = new Date(b.dateCompleted || 0).getTime() || 0;
@@ -100,9 +118,11 @@ const fetchFriendsFeed = async () => {
       });
 
       setFeedItems(formattedFeed);
-    } catch (err) {
-      console.warn('Failed to load real friends feed:', err);
-      setFeedItems([]);
+      localStorage.setItem(`friends_feed_${currentUserId}`, JSON.stringify(formattedFeed));
+    } catch (err: any) {
+      const errMsg = err?.message || String(err);
+      console.warn('Friends feed fetch lookup skipped/offline:', errMsg);
+      setError(errMsg);
     } finally {
       setLoading(false);
     }
@@ -182,9 +202,30 @@ const fetchFriendsFeed = async () => {
 
   return (
     <div className="space-y-12 select-none">
-      {loading ? (
-        <div className="flex flex-col items-center justify-center py-24 text-[#576d87] gap-3">
-          <Loader2 className="animate-spin" size={24} />
+      {/* Elegantly styled network timeout or offline warning banner */}
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/20 rounded-[2rem] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-[#e7e7e7] animate-fadeIn">
+          <div className="space-y-1">
+            <span className="text-[10px] uppercase font-mono tracking-widest text-red-400 font-bold block mb-0.5">
+              Network Notification
+            </span>
+            <p className="text-xs text-[#e7e7e7]/90 leading-relaxed max-w-lg font-sans">
+              Fehler beim Laden der Freunde ({error}). {feedItems.length > 0 ? "Showing recently cached activities from offline memory." : "Could not initialize connection with peer database records."}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={fetchFriendsFeed}
+            className="self-start sm:self-auto bg-red-400/10 hover:bg-red-400/20 active:scale-97 text-red-200 text-[10px] font-bold uppercase tracking-widest px-4.5 py-3 rounded-2xl transition-all border border-red-400/10"
+          >
+            Retry Connection
+          </button>
+        </div>
+      )}
+
+      {loading && feedItems.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-24 text-[#576d87] gap-3 animate-fadeIn">
+          <div className="w-5 h-5 border-2 border-primary-accent border-t-transparent rounded-full animate-spin mb-1" />
           <span className="text-xs font-mono uppercase tracking-widest">Gathering Friends Completed Archive</span>
         </div>
       ) : feedItems.length === 0 ? (
@@ -193,6 +234,15 @@ const fetchFriendsFeed = async () => {
           <p className="text-xs text-[#576d87] max-w-sm mx-auto leading-relaxed font-sans">
             Es sind bisher noch keine Aktivitäten im Feed vorhanden. Du kannst in den Einstellungen neue Freunde hinzufügen, um deren Updates hier zu sehen.
           </p>
+          {error && (
+            <button
+              type="button"
+              onClick={fetchFriendsFeed}
+              className="mt-4 bg-white/5 hover:bg-white/10 active:bg-white/15 px-4.5 py-3 rounded-2xl text-[10px] font-bold tracking-wider uppercase transition-all inline-flex items-center gap-2 text-[#576d87] hover:text-[#e7e7e7]"
+            >
+              Retry Connection
+            </button>
+          )}
         </div>
       ) : (
         (Object.entries(groupedItems) as [string, FriendsFeedItem[]][]).map(([monthYear, monthItems]) => (
