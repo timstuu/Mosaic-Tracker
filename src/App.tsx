@@ -43,6 +43,7 @@ export default function App() {
   const [expandedBacklogTypes, setExpandedBacklogTypes] = useState<Set<MediaType>>(new Set());
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [trackerTab, setTrackerTab] = useState<'library' | 'friends'>('library');
+  const [showAllCompleted, setShowAllCompleted] = useState(false);
 
   const handleDragEnd = (event: any, info: any) => {
     const swipeThreshold = 50;
@@ -65,6 +66,7 @@ export default function App() {
   useEffect(() => {
     setIsSearchVisible(false);
     setSearchQuery('');
+    setShowAllCompleted(false);
   }, [activePage]);
 
   useEffect(() => {
@@ -601,6 +603,18 @@ const dateB = new Date(b.watchDate || b.endDate || b.dateAdded || 0).getTime() |
       i => i.status === MediaStatus.COMPLETED || i.status === MediaStatus.DNF
     );
 
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    const recentCompleted = completedItems.filter(item => {
+      const rawDate = item.watchDate || item.endDate || item.dateAdded;
+      const date = new Date(rawDate || 0);
+      return !isNaN(date.getTime()) && date.getTime() >= sixMonthsAgo.getTime();
+    });
+
+    const hasOlderItems = completedItems.length > recentCompleted.length;
+    const displayedCompleted = showAllCompleted ? completedItems : recentCompleted;
+
     return (
       <div className="max-w-4xl mx-auto">
         <ActiveMediaShelf 
@@ -634,17 +648,48 @@ const dateB = new Date(b.watchDate || b.endDate || b.dateAdded || 0).getTime() |
         <div className="overflow-hidden mb-24 font-sans">
           {loading ? (
             <div className="p-12 text-center text-zinc-300 animate-pulse">Loading your library...</div>
-          ) : completedItems.length === 0 ? (
+          ) : displayedCompleted.length === 0 ? (
             <div className="p-24 text-center">
-              <p className="text-[#576d87] text-xs italic">No completed entries found.</p>
+              <p className="text-[#576d87] text-xs italic">No completed entries found in the last 6 months.</p>
+              {hasOlderItems && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllCompleted(true)}
+                  className="mt-4 px-6 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all border border-white/5"
+                >
+                  Show older entries ({completedItems.length - recentCompleted.length})
+                </button>
+              )}
             </div>
           ) : viewMode === 'mosaic' ? (
-            <MosaicView 
-              items={completedItems} 
-              onItemClick={setEditingItem} 
-            />
+            <div className="space-y-6">
+              <MosaicView 
+                items={displayedCompleted} 
+                onItemClick={setEditingItem} 
+              />
+              {hasOlderItems && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllCompleted(!showAllCompleted)}
+                  className="w-full py-4 text-[10px] font-bold text-white uppercase tracking-widest hover:bg-white/5 hover:text-primary-accent transition-all border-t border-white/[0.02]"
+                >
+                  {showAllCompleted ? 'Show Less' : `Show Older Entries (${completedItems.length - recentCompleted.length} more)`}
+                </button>
+              )}
+            </div>
           ) : (
-            renderList(completedItems)
+            <div className="space-y-6">
+              {renderList(displayedCompleted)}
+              {hasOlderItems && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllCompleted(!showAllCompleted)}
+                  className="w-full py-4 text-[10px] font-bold text-white uppercase tracking-widest hover:bg-white/5 hover:text-primary-accent transition-all border-t border-white/[0.02]"
+                >
+                  {showAllCompleted ? 'Show Less' : `Show Older Entries (${completedItems.length - recentCompleted.length} more)`}
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -887,6 +932,7 @@ const dateB = new Date(b.watchDate || b.endDate || b.dateAdded || 0).getTime() |
             onClose={() => setEditingItem(null)} 
             onSave={handleUpdateMedia}
             onDelete={handleDeleteMedia}
+            onAddToBacklog={handleAddToBacklog}
           />
         )}
       </AnimatePresence>

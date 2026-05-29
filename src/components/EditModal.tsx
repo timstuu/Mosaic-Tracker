@@ -11,9 +11,10 @@ interface EditModalProps {
   onClose: () => void;
   onSave: (item: Partial<MediaItem>) => void;
   onDelete: (id: string) => void;
+  onAddToBacklog?: (item: { title: string; type: MediaType; imageUrl?: string }) => void;
 }
 
-export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onDelete }) => {
+export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onDelete, onAddToBacklog }) => {
   const [type, setType] = useState<MediaType>(item.type);
   const [title, setTitle] = useState(item.title);
   const [rating, setRating] = useState(item.rating || 0);
@@ -27,6 +28,8 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
   const [link, setLink] = useState(item.link || '');
   const [isbn, setIsbn] = useState(item.isbn || '');
   const [isDnf, setIsDnf] = useState(item.status === MediaStatus.DNF);
+
+  const [addedIds, setAddedIds] = useState<number[]>([]);
 
   // TV progress state variables
   const [currentSeason, setCurrentSeason] = useState(item.currentSeason || 1);
@@ -506,17 +509,39 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                                 {rec.releaseDate.split('-')[0]}
                               </p>
                             )}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (window.confirm(`Möchtest du das aktuelle Medium zu "${rec.title}" ändern?`)) {
-                                  setTitle(rec.title);
-                                }
-                              }}
-                              className="w-full py-1 bg-white/5 hover:bg-primary-accent/15 rounded-lg text-[9px] font-bold uppercase tracking-widest text-[#576d87] hover:text-primary-accent transition-all text-center border border-white/5 hover:border-primary-accent/20"
-                            >
-                              Adopt
-                            </button>
+                            {(() => {
+                              const hasBeenAdded = addedIds.includes(rec.id);
+                              return (
+                                <button
+                                  type="button"
+                                  disabled={hasBeenAdded}
+                                  onClick={async () => {
+                                    if (hasBeenAdded) return;
+                                    try {
+                                      if (onAddToBacklog) {
+                                        await onAddToBacklog({
+                                          title: rec.title,
+                                          type: type,
+                                          imageUrl: rec.posterUrl
+                                        });
+                                        setAddedIds(prev => [...prev, rec.id]);
+                                      } else {
+                                        console.warn('onAddToBacklog prop is missing');
+                                      }
+                                    } catch (e) {
+                                      console.error('Error adding to backlog:', e);
+                                    }
+                                  }}
+                                  className={`w-full py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-widest transition-all text-center border ${
+                                    hasBeenAdded 
+                                      ? 'bg-[#1b2531] text-emerald-400/80 border-emerald-500/20 cursor-default' 
+                                      : 'bg-white/5 hover:bg-emerald-500/10 text-[#576d87] hover:text-emerald-400 border-white/5 hover:border-emerald-500/20'
+                                  }`}
+                                >
+                                  {hasBeenAdded ? 'Added ✓' : '+ Backlog'}
+                                </button>
+                              );
+                            })()}
                           </div>
                         </div>
                       );

@@ -96,19 +96,27 @@ export const FriendsView: React.FC<FriendsViewProps> = ({ session, onAddToBacklo
         throw mediaError;
       }
 
-      const formattedFeed: FriendsFeedItem[] = (feedData || []).map((item: any) => ({
-        id: item.id,
-        title: item.title,
-        type: item.type,
-        status: item.status,
-        imageUrl: item.imageUrl,
-        dateCompleted: item.watchDate || item.endDate || item.dateCompleted || item.dateAdded || item.created_at,
-        user_id: item.user_id,
-        profiles: {
-          username: item.profiles?.username || 'user',
-          avatar_url: item.profiles?.avatar_url
-        }
-      }));
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+      const formattedFeed: FriendsFeedItem[] = (feedData || [])
+        .map((item: any) => ({
+          id: item.id,
+          title: item.title,
+          type: item.type,
+          status: item.status,
+          imageUrl: item.imageUrl,
+          dateCompleted: item.watchDate || item.endDate || item.dateCompleted || item.dateAdded || item.created_at,
+          user_id: item.user_id,
+          profiles: {
+            username: item.profiles?.username || 'user',
+            avatar_url: item.profiles?.avatar_url
+          }
+        }))
+        .filter((item: FriendsFeedItem) => {
+          const date = new Date(item.dateCompleted || 0);
+          return !isNaN(date.getTime()) && date.getTime() >= sixMonthsAgo.getTime();
+        });
 
       // Client-side descending sort by dateCompleted
       formattedFeed.sort((a, b) => {
