@@ -71,31 +71,18 @@ export default function App() {
 
   useEffect(() => {
     if (isSupabaseConfigured) {
-      // Get initial session
-      supabase.auth.getSession().then(({ data: { session } }: any) => {
-        setSession(session);
-        if (session) {
+      // Listen for auth changes (this immediately fires with the initial session configuration)
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, currentSession: any) => {
+        setSession(currentSession);
+        if (currentSession) {
           fetchMedia();
           fetchChallenges();
         } else {
+          setMediaItems([]);
+          setChallenges([]);
           setLoading(false);
         }
       });
-
-      // Listen for auth changes
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, currentSession: any) => {
-      // NUR triggern, wenn sich der Session-Status wirklich geändert hat!
-      if (currentSession && (!session || currentSession.user.id !== session.user?.id)) {
-        setSession(currentSession);
-        fetchMedia();
-        fetchChallenges();
-      } else if (!currentSession) {
-        setSession(null);
-        setMediaItems([]);
-        setChallenges([]);
-        setLoading(false);
-      }
-    });
       return () => subscription.unsubscribe();
     } else {
       setLoading(false);
@@ -107,24 +94,20 @@ export default function App() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const currentUserId = session?.user?.id;
+      if (!currentUserId) {
+        setLoading(false);
+        return;
+      }
 
-      // Optimierter Daten-Fetch in src/App.tsx
-const { data, error } = await supabase
-  .from('media_items')
-  .select('id, user_id, title, type, status, rating, watchDate, endDate, dateAdded, imageUrl, tags, platform, console, notes');
+      // Exact user_id database filtering to drastically reduce DB load and ensure privacy
+      const { data, error } = await supabase
+        .from('media_items')
+        .select('id, user_id, title, type, status, rating, watchDate, endDate, dateAdded, imageUrl, tags, platform, console, notes')
+        .eq('user_id', currentUserId);
       
       if (error) throw error;
       
-      const filteredData = (data || []).filter(item => {
-        if (!item.user_id) {
-          console.warn(`Item ${item.id} (${item.title}) has no user_id and will be ignored.`);
-          return false;
-        }
-        if (!currentUserId) return false;
-        return item.user_id === currentUserId;
-      });
-      
-      const normalizedData = filteredData.map(item => {
+      const normalizedData = (data || []).map(item => {
         let status = item.status?.toLowerCase().trim() || MediaStatus.PLANNED;
         return { 
           ...item, 
@@ -147,9 +130,14 @@ const { data, error } = await supabase
   const fetchChallenges = async () => {
     if (!isSupabaseConfigured) return;
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const currentUserId = session?.user?.id;
+      if (!currentUserId) return;
+
       const { data, error } = await supabase
         .from('challenges')
-        .select('*');
+        .select('*')
+        .eq('user_id', currentUserId);
       
       if (error) throw error;
       setChallenges(data || []);

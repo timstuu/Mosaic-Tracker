@@ -91,6 +91,9 @@ export const FriendsView: React.FC<FriendsViewProps> = ({ session, onAddToBacklo
   .order('watchDate', { ascending: false })
   .limit(50);
 
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
       const formattedFeed: FriendsFeedItem[] = (feedData || [])
         .map((item: any) => ({
           id: item.id,
