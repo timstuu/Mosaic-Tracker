@@ -111,7 +111,7 @@ export default function App() {
       // Optimierter Daten-Fetch in src/App.tsx
 const { data, error } = await supabase
   .from('media_items')
-  .select('id, title, type, status, rating, watchDate, endDate, dateAdded, imageUrl, tags, platform, console, notes, user_id');
+  .select('id, user_id, title, type, status, rating, watchDate, endDate, dateAdded, imageUrl, tags, platform, console, notes');
       
       if (error) throw error;
       

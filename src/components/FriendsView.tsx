@@ -80,24 +80,16 @@ export const FriendsView: React.FC<FriendsViewProps> = ({ session, onAddToBacklo
       }
 
       // 2. Fetch friend media completions
-      const { data: feedData, error: mediaError } = await supabase
-        .from('media_items')
-        .select(`
-          *,
-          profiles (
-            username,
-            avatar_url
-          )
-        `)
-        .in('user_id', friendIds)
-        .eq('status', 'completed');
-
-      if (mediaError) {
-        throw mediaError;
-      }
-
-      const sixMonthsAgo = new Date();
-      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      const { data: feedData, error } = await supabase
+  .from('media_items')
+  .select(`
+    id, title, type, status, imageUrl, watchDate, endDate, dateAdded, user_id,
+    profiles ( username, avatar_url )
+  `)
+  .in('user_id', friendIds)
+  .eq('status', 'completed')
+  .order('watchDate', { ascending: false })
+  .limit(50);
 
       const formattedFeed: FriendsFeedItem[] = (feedData || [])
         .map((item: any) => ({
