@@ -28,18 +28,21 @@ create table media_items (
 -- Enable Row Level Security (RLS)
 alter table media_items enable row level security;
 
+-- Create index for user_id to resolve unindexed foreign key and optimize queries
+create index media_items_user_id_idx on media_items(user_id);
+
 -- Create policies for multi-user support
 create policy "Users can view their own media" on media_items
-  for select using (auth.uid() = user_id);
+  for select using ((select auth.uid()) = user_id);
 
 create policy "Users can insert their own media" on media_items
-  for insert with check (auth.uid() = user_id);
+  for insert with check ((select auth.uid()) = user_id);
 
 create policy "Users can update their own media" on media_items
-  for update using (auth.uid() = user_id);
+  for update using ((select auth.uid()) = user_id);
 
 create policy "Users can delete their own media" on media_items
-  for delete using (auth.uid() = user_id);
+  for delete using ((select auth.uid()) = user_id);
 ```
 
 ## 2. `challenges` Table
@@ -59,18 +62,49 @@ create table challenges (
 -- Enable RLS
 alter table challenges enable row level security;
 
+-- Create index for user_id to resolve unindexed foreign key and optimize queries
+create index challenges_user_id_idx on challenges(user_id);
+
 -- Create policies for multi-user support
 create policy "Users can view their own challenges" on challenges
-  for select using (auth.uid() = user_id);
+  for select using ((select auth.uid()) = user_id);
 
 create policy "Users can insert their own challenges" on challenges
-  for insert with check (auth.uid() = user_id);
+  for insert with check ((select auth.uid()) = user_id);
 
 create policy "Users can update their own challenges" on challenges
-  for update using (auth.uid() = user_id);
+  for update using ((select auth.uid()) = user_id);
 
 create policy "Users can delete their own challenges" on challenges
-  for delete using (auth.uid() = user_id);
+  for delete using ((select auth.uid()) = user_id);
+```
+
+## 3. `friendships` Table
+
+```sql
+create table friendships (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) default auth.uid(),
+  friend_id uuid references profiles(id) not null,
+  created_at timestamp with time zone default now(),
+  constraint friendships_user_friend_unique unique (user_id, friend_id)
+);
+
+-- Enable RLS
+alter table friendships enable row level security;
+
+-- Create indexes to resolve unindexed foreign keys and optimize query joins
+create index friendships_friend_id_idx on friendships(friend_id);
+
+-- Create policies for multi-user support
+create policy "Users can view their own friendships" on friendships
+  for select using ((select auth.uid()) = user_id);
+
+create policy "Users can insert their own friendships" on friendships
+  for insert with check ((select auth.uid()) = user_id);
+
+create policy "Users can delete their own friendships" on friendships
+  for delete using ((select auth.uid()) = user_id);
 ```
 
 ## Environment Variables

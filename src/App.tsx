@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 import { Auth } from './components/Auth';
 import { Layout } from './components/Layout';
@@ -45,6 +45,8 @@ export default function App() {
   const [trackerTab, setTrackerTab] = useState<'library' | 'friends'>('library');
   const [showAllCompleted, setShowAllCompleted] = useState(false);
 
+  const lastFetchedUserIdRef = useRef<string | null>(null);
+
   const handleDragEnd = (event: any, info: any) => {
     const swipeThreshold = 50;
     const offset = info.offset.x;
@@ -75,9 +77,13 @@ export default function App() {
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: any, currentSession: any) => {
         setSession(currentSession);
         if (currentSession) {
-          fetchMedia();
-          fetchChallenges();
+          const uid = currentSession.user?.id;
+          if (lastFetchedUserIdRef.current !== uid) {
+            fetchMedia(uid);
+            fetchChallenges(uid);
+          }
         } else {
+          lastFetchedUserIdRef.current = null;
           setMediaItems([]);
           setChallenges([]);
           setLoading(false);
@@ -89,15 +95,21 @@ export default function App() {
     }
   }, []);
 
-  const fetchMedia = async () => {
+  const fetchMedia = async (userIdOverride?: string, retryCount = 0) => {
     if (!isSupabaseConfigured) return;
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const currentUserId = session?.user?.id;
+      let currentUserId = userIdOverride;
+      if (!currentUserId) {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        currentUserId = currentSession?.user?.id;
+      }
       if (!currentUserId) {
         setLoading(false);
         return;
       }
+
+      // Track last fetched user id to avoid duplicates
+      lastFetchedUserIdRef.current = currentUserId;
 
       // Exact user_id database filtering to drastically reduce DB load and ensure privacy
       const { data, error } = await supabase
@@ -120,18 +132,29 @@ export default function App() {
       });
       
       setMediaItems(normalizedData);
-    } catch (error) {
-      console.error('Failed to fetch media:', error);
+    } catch (err: any) {
+      console.error('Failed to fetch media:', err);
+      // If it's a transient fetch error, retry up to 2 times with exponential backoff
+      if (retryCount < 2 && (err instanceof TypeError || String(err).includes('Failed to fetch') || err?.message?.includes('Failed to fetch'))) {
+        const delay = Math.pow(2, retryCount) * 1000;
+        console.warn(`Retrying fetchMedia in ${delay}ms... (Attempt ${retryCount + 1}/2)`);
+        setTimeout(() => {
+          fetchMedia(userIdOverride, retryCount + 1);
+        }, delay);
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchChallenges = async () => {
+  const fetchChallenges = async (userIdOverride?: string, retryCount = 0) => {
     if (!isSupabaseConfigured) return;
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const currentUserId = session?.user?.id;
+      let currentUserId = userIdOverride;
+      if (!currentUserId) {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        currentUserId = currentSession?.user?.id;
+      }
       if (!currentUserId) return;
 
       const { data, error } = await supabase
@@ -141,8 +164,16 @@ export default function App() {
       
       if (error) throw error;
       setChallenges(data || []);
-    } catch (error) {
-      console.error('Failed to fetch challenges:', error);
+    } catch (err: any) {
+      console.error('Failed to fetch challenges:', err);
+      // Retry transient network errors
+      if (retryCount < 2 && (err instanceof TypeError || String(err).includes('Failed to fetch') || err?.message?.includes('Failed to fetch'))) {
+        const delay = Math.pow(2, retryCount) * 1000;
+        console.warn(`Retrying fetchChallenges in ${delay}ms... (Attempt ${retryCount + 1}/2)`);
+        setTimeout(() => {
+          fetchChallenges(userIdOverride, retryCount + 1);
+        }, delay);
+      }
     }
   };
 
