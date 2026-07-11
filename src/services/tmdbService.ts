@@ -52,6 +52,37 @@ export interface TMDbShowDetails {
   imageUrl?: string;
 }
 
+export interface TMDbMovieSearchResult {
+  id: number;
+  title: string;
+  poster_path: string | null;
+  release_date?: string;
+  overview?: string;
+}
+
+export async function searchMovies(query: string): Promise<TMDbMovieSearchResult[]> {
+  if (!TMDB_API_KEY) {
+    console.warn('TMDB API Key missing. Please set VITE_TMDB_API_KEY in your environment.');
+    return [];
+  }
+
+  try {
+    const response = await fetch(
+      `${BASE_URL}/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}`
+    );
+    
+    if (!response.ok) {
+      throw new Error(`TMDB API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.results || [];
+  } catch (error) {
+    console.error('Error searching movies from TMDB:', error);
+    return [];
+  }
+}
+
 export async function searchTVShows(query: string): Promise<TMDbShowSearchResult[]> {
   if (!TMDB_API_KEY) {
     console.warn('TMDB API Key missing. Please set VITE_TMDB_API_KEY in your environment.');

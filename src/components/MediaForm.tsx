@@ -2,12 +2,22 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Film, Tv, Book, Gamepad2, Star, Calendar, Monitor, Cpu, Scan } from 'lucide-react';
 import { MediaType, MediaItem, MediaStatus } from '../types';
-import { searchTVShows, fetchTVShowDetails, TMDbShowSearchResult } from '../services/tmdbService';
+import { searchTVShows, fetchTVShowDetails, searchMovies } from '../services/tmdbService';
+import { searchBooks } from '../services/bookService';
+import { searchGames } from '../services/gameService';
 import { BarcodeScanner } from './BarcodeScanner';
 
 interface MediaFormProps {
   onClose: () => void;
   onSave: (item: Partial<MediaItem>) => void;
+}
+
+interface UnifiedSuggestion {
+  id: string | number;
+  title: string;
+  subtitle?: string;
+  imageUrl?: string | null;
+  rawData: any;
 }
 
 export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
@@ -30,7 +40,7 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
   const [imageUrl, setImageUrl] = useState('');
 
   // Suggestions state
-  const [suggestions, setSuggestions] = useState<TMDbShowSearchResult[]>([]);
+  const [suggestions, setSuggestions] = useState<UnifiedSuggestion[]>([]);
   const [searching, setSearching] = useState(false);
 
   // Barcode and Open Library lookup states
@@ -70,23 +80,46 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
   const isInteractiveMedia = [MediaType.BOOK, MediaType.GAME, MediaType.SHOW].includes(type);
 
 
-  const handleSelectShow = async (showToSelect: TMDbShowSearchResult) => {
-    setTitle(showToSelect.name);
+  const handleSelectSuggestion = async (suggestion: UnifiedSuggestion) => {
+    setTitle(suggestion.title);
     setSuggestions([]);
-    setSearching(true);
-    try {
-      const details = await fetchTVShowDetails(showToSelect.id);
-      if (details) {
-        setTotalSeasons(details.totalSeasons);
-        setTotalEpisodes(details.totalEpisodes);
-        if (details.imageUrl) {
-          setImageUrl(details.imageUrl);
-        }
+
+    if (suggestion.imageUrl) {
+      if (type === MediaType.SHOW || type === MediaType.MOVIE || type === MediaType.DOCUMENTARY) {
+        const highResUrl = suggestion.imageUrl.replace('/w92', '/w500');
+        setImageUrl(highResUrl);
+      } else if (type === MediaType.BOOK) {
+        const highResUrl = suggestion.imageUrl.replace('-S.jpg', '-M.jpg');
+        setImageUrl(highResUrl);
+      } else {
+        setImageUrl(suggestion.imageUrl);
       }
-    } catch (e) {
-      console.error('Error fetching TV show details:', e);
-    } finally {
-      setSearching(false);
+    } else {
+      setImageUrl('');
+    }
+
+    if (type === MediaType.SHOW) {
+      setSearching(true);
+      try {
+        const details = await fetchTVShowDetails(suggestion.rawData.id);
+        if (details) {
+          setTotalSeasons(details.totalSeasons);
+          setTotalEpisodes(details.totalEpisodes);
+          if (details.imageUrl) {
+            setImageUrl(details.imageUrl);
+          }
+        }
+      } catch (e) {
+        console.error('Error fetching TV show details:', e);
+      } finally {
+        setSearching(false);
+      }
+    } else if (type === MediaType.BOOK) {
+      if (suggestion.rawData.isbn && suggestion.rawData.isbn.length > 0) {
+        setIsbn(suggestion.rawData.isbn[0]);
+      } else {
+        setIsbn('');
+      }
     }
   };
 
@@ -164,7 +197,10 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
               <button
                 key={item.id}
                 type="button"
-                onClick={() => setType(item.id)}
+                onClick={() => {
+                  setType(item.id);
+                  setSuggestions([]);
+                }}
                 className={`flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all ${
                   type === item.id 
                     ? 'bg-primary-accent border-primary-accent text-app-bg' 
@@ -187,14 +223,77 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
                 onChange={(e) => {
                   const val = e.target.value;
                   setTitle(val);
-                  if (type === MediaType.SHOW && val.trim().length >= 2) {
+                  if (val.trim().length >= 2) {
                     setSearching(true);
-                    searchTVShows(val).then((res) => {
-                      setSuggestions(res.slice(0, 5));
+                    if (type === MediaType.MOVIE || type === MediaType.DOCUMENTARY) {
+                      searchMovies(val).then((res) => {
+                        const mapped: UnifiedSuggestion[] = res.map(m => ({
+                          id: `movie-${m.id}`,
+                          title: m.title,
+                          subtitle: m.release_date ? new Date(m.release_date).getFullYear().toString() : undefined,
+                          imageUrl: m.poster_path ? `https://image.tmdb.org/t/p/w92${m.poster_path}` : null,
+                          rawData: m
+                        }));
+                        setSuggestions(mapped.slice(0, 5));
+                        setSearching(false);
+                      }).catch(() => {
+                        setSearching(false);
+                      });
+                    } else if (type === MediaType.SHOW) {
+                      searchTVShows(val).then((res) => {
+                        const mapped: UnifiedSuggestion[] = res.map(s => ({
+                          id: `show-${s.id}`,
+                          title: s.name,
+                          subtitle: s.first_air_date ? new Date(s.first_air_date).getFullYear().toString() : undefined,
+                          imageUrl: s.poster_path ? `https://image.tmdb.org/t/p/w92${s.poster_path}` : null,
+                          rawData: s
+                        }));
+                        setSuggestions(mapped.slice(0, 5));
+                        setSearching(false);
+                      }).catch(() => {
+                        setSearching(false);
+                      });
+                    } else if (type === MediaType.BOOK) {
+                      searchBooks(val).then((res) => {
+                        const mapped: UnifiedSuggestion[] = res.map(b => {
+                          const author = b.author_name && b.author_name.length > 0 ? b.author_name[0] : undefined;
+                          const subtitle = author 
+                            ? (b.first_publish_year ? `${author} (${b.first_publish_year})` : author)
+                            : (b.first_publish_year ? b.first_publish_year.toString() : undefined);
+                          const coverUrl = b.cover_i 
+                            ? `https://covers.openlibrary.org/b/id/${b.cover_i}-S.jpg` 
+                            : (b.isbn && b.isbn.length > 0 ? `https://covers.openlibrary.org/b/isbn/${b.isbn[0]}-S.jpg` : null);
+                          return {
+                            id: `book-${b.isbn?.[0] || b.cover_i || Math.random()}`,
+                            title: b.title,
+                            subtitle,
+                            imageUrl: coverUrl,
+                            rawData: b
+                          };
+                        });
+                        setSuggestions(mapped.slice(0, 5));
+                        setSearching(false);
+                      }).catch(() => {
+                        setSearching(false);
+                      });
+                    } else if (type === MediaType.GAME) {
+                      searchGames(val).then((res) => {
+                        const mapped: UnifiedSuggestion[] = res.map(g => ({
+                          id: `game-${g.id}`,
+                          title: g.name,
+                          subtitle: g.released ? new Date(g.released).getFullYear().toString() : undefined,
+                          imageUrl: g.background_image,
+                          rawData: g
+                        }));
+                        setSuggestions(mapped.slice(0, 5));
+                        setSearching(false);
+                      }).catch(() => {
+                        setSearching(false);
+                      });
+                    } else {
+                      setSuggestions([]);
                       setSearching(false);
-                    }).catch(() => {
-                      setSearching(false);
-                    });
+                    }
                   } else {
                     setSuggestions([]);
                   }
@@ -204,34 +303,34 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
                 autoComplete="off"
               />
 
-              {type === MediaType.SHOW && (suggestions.length > 0 || searching) && (
-                <div className="absolute left-0 right-0 mt-1 bg-secondary-accent border border-white/10 rounded-xl overflow-hidden shadow-2xl z-55 max-h-60 overflow-y-auto">
+              {(suggestions.length > 0 || searching) && (
+                <div className="absolute left-0 right-0 mt-1 bg-zinc-950 border border-white/10 rounded-xl overflow-hidden shadow-2xl z-55 max-h-60 overflow-y-auto">
                   {searching && suggestions.length === 0 ? (
-                    <div className="px-4 py-3 text-xs text-[#576d87] animate-pulse">Searching TMDb...</div>
+                    <div className="px-4 py-3 text-xs text-[#576d87] animate-pulse">Searching suggestions...</div>
                   ) : (
-                    suggestions.map((show) => (
+                    suggestions.map((suggestion) => (
                       <div
-                        key={show.id}
-                        onClick={() => handleSelectShow(show)}
+                        key={suggestion.id}
+                        onClick={() => handleSelectSuggestion(suggestion)}
                         className="px-4 py-3 border-b border-white/[0.03] last:border-0 hover:bg-white/5 cursor-pointer flex items-center gap-3 transition-colors text-xs text-white"
                       >
-                        {show.poster_path ? (
+                        {suggestion.imageUrl ? (
                           <img 
-                            src={`https://image.tmdb.org/t/p/w92${show.poster_path}`} 
-                            alt={show.name} 
+                            src={suggestion.imageUrl} 
+                            alt={suggestion.title} 
                             referrerPolicy="no-referrer"
                             className="w-6 h-9 object-cover rounded shadow"
                           />
                         ) : (
                           <div className="w-6 h-9 bg-white/5 rounded flex items-center justify-center text-zinc-500 shrink-0">
-                            <Tv size={12} />
+                            {type === MediaType.BOOK ? <Book size={12} /> : type === MediaType.GAME ? <Gamepad2 size={12} /> : <Film size={12} />}
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <span className="font-semibold block truncate text-sm">{show.name}</span>
-                          {show.first_air_date && (
-                            <span className="text-[10px] text-[#576d87] block font-mono mt-0.5">
-                              {new Date(show.first_air_date).getFullYear()}
+                          <span className="font-semibold block truncate text-sm">{suggestion.title}</span>
+                          {suggestion.subtitle && (
+                            <span className="text-[10px] text-[#576d87] block mt-0.5 truncate">
+                              {suggestion.subtitle}
                             </span>
                           )}
                         </div>

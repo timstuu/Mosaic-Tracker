@@ -45,3 +45,25 @@ export const fetchBookCover = async (title: string, isbn?: string): Promise<stri
     return undefined;
   }
 };
+
+export interface BookSearchResult {
+  title: string;
+  author_name?: string[];
+  cover_i?: number;
+  first_publish_year?: number;
+  isbn?: string[];
+}
+
+export const searchBooks = async (query: string): Promise<BookSearchResult[]> => {
+  try {
+    const searchUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent(query)}&limit=10`;
+    const response = await fetch(searchUrl);
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    return data.docs || [];
+  } catch (error) {
+    console.error('Error searching books:', error);
+    return [];
+  }
+};

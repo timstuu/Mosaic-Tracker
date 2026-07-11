@@ -38,3 +38,33 @@ export const fetchGameCover = async (title: string): Promise<string | undefined>
     return undefined;
   }
 };
+
+const RAWG_API_KEY = import.meta.env.VITE_RAWG_API_KEY;
+
+export interface GameSearchResult {
+  id: number;
+  name: string;
+  background_image: string | null;
+  released?: string;
+}
+
+export const searchGames = async (query: string): Promise<GameSearchResult[]> => {
+  if (!RAWG_API_KEY) {
+    console.warn('VITE_RAWG_API_KEY missing. Please set it in your environment to enable game search.');
+    return [];
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.rawg.io/api/games?key=${RAWG_API_KEY}&search=${encodeURIComponent(query)}&page_size=5`
+    );
+    if (!response.ok) {
+      throw new Error(`RAWG API error: ${response.status}`);
+    }
+    const data = await response.json();
+    return data.results || [];
+  } catch (error) {
+    console.error('Error searching games from RAWG:', error);
+    return [];
+  }
+};
