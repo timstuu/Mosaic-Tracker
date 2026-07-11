@@ -40,6 +40,7 @@ export default function App() {
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [isChallengeModalOpen, setIsChallengeModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'mosaic'>('mosaic');
+  const [backlogViewMode, setBacklogViewMode] = useState<'list' | 'mosaic'>('mosaic');
   const [expandedBacklogTypes, setExpandedBacklogTypes] = useState<Set<MediaType>>(new Set());
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [trackerTab, setTrackerTab] = useState<'library' | 'friends'>('library');
@@ -723,7 +724,7 @@ const dateB = new Date(b.watchDate || b.endDate || b.dateAdded || 0).getTime() |
     const groupedBacklog = Object.values(MediaType).reduce((acc, type) => {
       const items = backlogItems
         .filter(item => item.type === type)
-       .sort((a, b) => new Date(b.dateAdded || 0).getTime() - new Date(a.dateAdded || 0).getTime());
+        .sort((a, b) => new Date(b.dateAdded || 0).getTime() - new Date(a.dateAdded || 0).getTime());
       if (items.length > 0) acc[type] = items;
       return acc;
     }, {} as Record<MediaType, MediaItem[]>);
@@ -753,50 +754,112 @@ const dateB = new Date(b.watchDate || b.endDate || b.dateAdded || 0).getTime() |
           <p className="text-[#576d87] text-xs uppercase tracking-wider">Media you're planning to experience later.</p>
         </div>
 
+        {/* Backlog View Mode Switcher */}
+        <div className="flex justify-between items-center border-b border-[#576d87]/10 pb-2 mb-8 mt-4 font-sans">
+          <span className="text-[10px] uppercase tracking-widest font-bold text-white">Backlog Queue</span>
+          
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setBacklogViewMode('list')}
+              className={`text-[9px] font-bold uppercase tracking-widest transition-colors ${backlogViewMode === 'list' ? 'text-[#e7e7e7]' : 'text-[#576d87] hover:text-[#e7e7e7]'}`}
+            >
+              List
+            </button>
+            <span className="text-[#576d87]/20 text-[9px]">/</span>
+            <button
+              onClick={() => setBacklogViewMode('mosaic')}
+              className={`text-[9px] font-bold uppercase tracking-widest transition-colors ${backlogViewMode === 'mosaic' ? 'text-[#e7e7e7]' : 'text-[#576d87] hover:text-[#e7e7e7]'}`}
+            >
+              Mosaic
+            </button>
+          </div>
+        </div>
+
         <div className="space-y-8">
           {Object.entries(groupedBacklog).map(([type, items]) => {
             const mediaType = type as MediaType;
             const isExpanded = expandedBacklogTypes.has(mediaType);
-            const displayedItems = isExpanded ? items : items.slice(0, 10);
-            const hasMore = items.length > 10;
+            const displayedItems = isExpanded ? items : items.slice(0, 9);
+            const hasMore = items.length > 9;
 
             return (
               <div key={type} className="space-y-4">
-                <div className="flex items-center justify-between px-2">
+                <div className="mb-4 px-2 py-1 border-b border-white/10 text-sm font-bold text-primary-accent uppercase tracking-widest flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="text-primary-accent/60">{typeIcons[mediaType]}</div>
-                    <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
+                    <h3>
                       {type}s
                     </h3>
-                    <span className="text-[10px] font-mono text-zinc-700 ml-1">({items.length})</span>
+                    <span className="text-sm font-mono text-primary-accent/50 ml-1">({items.length})</span>
                   </div>
                 </div>
                 
                 <div className="overflow-hidden">
-                  {displayedItems.map((item) => {
-                    try {
-                      if (!item || !item.title) return null;
-                      return (
-                        <BacklogRow
-                          key={item.id}
-                          item={item}
-                          typeIcons={typeIcons}
-                          onMoveToTracker={handleMoveToTracker}
-                          onEdit={(itemToEdit) => setEditingItem(itemToEdit)}
-                        />
-                      );
-                    } catch (err) {
-                      console.error("Error rendering item in backlog:", item, err);
-                      return null;
-                    }
-                  })}
+                  {backlogViewMode === 'mosaic' ? (
+                    <div className="grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-4 p-2">
+                      {displayedItems.map((item) => {
+                        try {
+                          if (!item || !item.title) return null;
+                          return (
+                            <motion.div
+                              key={item.id}
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              whileTap={{ scale: 0.98 }}
+                              className="relative aspect-[2/3] rounded-lg overflow-hidden group cursor-pointer shadow-lg shadow-black/40 border border-white/10"
+                              onClick={() => setEditingItem(item)}
+                            >
+                              {item.imageUrl ? (
+                                <img 
+                                  src={item.imageUrl} 
+                                  alt={item.title} 
+                                  referrerPolicy="no-referrer"
+                                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-white/5 flex flex-col items-center justify-center text-zinc-500 p-2 text-center">
+                                  <div className="text-primary-accent/60 mb-2">
+                                    {typeIcons[mediaType]}
+                                  </div>
+                                  <span className="text-[10px] uppercase tracking-widest line-clamp-2">{item.title}</span>
+                                </div>
+                              )}
+                            </motion.div>
+                          );
+                        } catch (err) {
+                          console.error("Error rendering item in backlog mosaic:", item, err);
+                          return null;
+                        }
+                      })}
+                    </div>
+                  ) : (
+                    <div className="overflow-hidden border border-white/[0.02] rounded-2xl bg-white/[0.01]">
+                      {displayedItems.map((item) => {
+                        try {
+                          if (!item || !item.title) return null;
+                          return (
+                            <BacklogRow
+                              key={item.id}
+                              item={item}
+                              typeIcons={typeIcons}
+                              onMoveToTracker={handleMoveToTracker}
+                              onEdit={(itemToEdit) => setEditingItem(itemToEdit)}
+                            />
+                          );
+                        } catch (err) {
+                          console.error("Error rendering item in backlog list:", item, err);
+                          return null;
+                        }
+                      })}
+                    </div>
+                  )}
                   
                   {hasMore && (
                     <button
                       onClick={() => toggleExpand(mediaType)}
-                      className="w-full py-4 text-[10px] font-bold text-white uppercase tracking-widest hover:bg-white/5 hover:text-primary-accent transition-all border-t border-white/[0.02]"
+                      className="w-full py-4 text-[10px] font-bold text-white uppercase tracking-widest hover:bg-white/5 hover:text-primary-accent transition-all border-t border-white/[0.02] mt-2"
                     >
-                      {isExpanded ? 'Show Less' : `Show More (${items.length - 10} more)`}
+                      {isExpanded ? 'Show Less' : `Show More (${items.length - 9} more)`}
                     </button>
                   )}
                 </div>
