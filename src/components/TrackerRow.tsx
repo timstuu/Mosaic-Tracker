@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Film, Tv, Book, Gamepad2, Star, ExternalLink, Edit2 } from 'lucide-react';
+import React from 'react';
+import { motion } from 'motion/react';
+import { Film, Tv, Book, Gamepad2, Star } from 'lucide-react';
 import { MediaItem, MediaType, MediaStatus } from '../types';
 
 interface TrackerRowProps {
@@ -18,73 +18,6 @@ export const TrackerRow: React.FC<TrackerRowProps> = ({
   date,
   onEdit
 }) => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isPressing, setIsPressing] = useState(false);
-  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
-  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
-
-  const linkUrl = item.link || (
-    (item.type === MediaType.MOVIE || item.type === MediaType.SHOW || item.type === MediaType.DOCUMENTARY) 
-      ? 'https://www.werstreamt.es/filme-serien/?q=' + encodeURIComponent(item.title) 
-      : `https://www.google.com/search?q=${encodeURIComponent(item.title)}`
-  );
-
-  const startPress = (clientX: number, clientY: number) => {
-    setIsPressing(true);
-    touchStartPos.current = { x: clientX, y: clientY };
-
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-    }
-
-    longPressTimer.current = setTimeout(() => {
-      setIsMenuOpen(true);
-      setIsPressing(false);
-      if ('vibrate' in navigator) {
-        try {
-          navigator.vibrate(50);
-        } catch (e) {
-          // ignore sandbox context warning
-        }
-      }
-    }, 500);
-  };
-
-  const cancelPress = () => {
-    setIsPressing(false);
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-  };
-
-  const handlePointerDown = (e: React.PointerEvent) => {
-    if (e.button !== 0) return;
-    startPress(e.clientX, e.clientY);
-  };
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!touchStartPos.current) return;
-    const dx = e.clientX - touchStartPos.current.x;
-    const dy = e.clientY - touchStartPos.current.y;
-    if (Math.hypot(dx, dy) > 8) {
-      cancelPress();
-    }
-  };
-
-  useEffect(() => {
-    const handleScroll = () => {
-      cancelPress();
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      if (longPressTimer.current) {
-        clearTimeout(longPressTimer.current);
-      }
-    };
-  }, []);
-
   return (
     <>
       {/* Mobile Month Divider */}
@@ -95,20 +28,10 @@ export const TrackerRow: React.FC<TrackerRowProps> = ({
       )}
 
       <motion.div
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={cancelPress}
-        onPointerCancel={cancelPress}
-        onPointerLeave={cancelPress}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          setIsMenuOpen(true);
-        }}
+        onClick={() => onEdit(item)}
         whileTap={{ scale: 0.98 }}
         transition={{ duration: 0.15 }}
-        className={`flex md:grid md:grid-cols-[140px_60px_48px_1fr_120px] md:items-center px-4 md:px-6 py-4 border-b border-white/[0.02] gap-4 md:gap-0 select-none cursor-pointer transition-colors ${
-          isPressing ? 'bg-white/[0.03]' : 'hover:bg-white/5'
-        }`}
+        className="flex md:grid md:grid-cols-[140px_60px_48px_1fr_120px] md:items-center px-4 md:px-6 py-4 border-b border-white/[0.02] gap-4 md:gap-0 select-none cursor-pointer transition-colors hover:bg-white/5"
       >
         {/* Desktop Period Column */}
         <div className="hidden md:block text-sm font-serif italic text-[#576d87]">
@@ -192,78 +115,6 @@ export const TrackerRow: React.FC<TrackerRowProps> = ({
           </div>
         </div>
       </motion.div>
-
-      {/* Elegant minimalist Context Menu modal overlay */}
-      <AnimatePresence>
-        {isMenuOpen && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center">
-            {/* Backdrop blur effect */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsMenuOpen(false)}
-              className="absolute inset-0 bg-[#242d3a]/60 backdrop-blur-md"
-            />
-
-            {/* Menu Container */}
-            <motion.div
-              initial={{ opacity: 0, scale: 0.92, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.92, y: 10 }}
-              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-              className="relative w-[280px] bg-[#576d87] rounded-3xl overflow-hidden p-2.5 shadow-2xl border border-white/10 text-[#e7e7e7]"
-            >
-              {/* Item Info Header */}
-              <div className="px-4 py-3 border-b border-white/10 mb-2">
-                <span className="text-[9px] uppercase tracking-wider font-mono text-white/50 block mb-1">
-                  Completed Entry
-                </span>
-                <span className="text-xs font-semibold block truncate text-white">
-                  {item.title}
-                </span>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="space-y-1">
-                {/* Open Link */}
-                <a
-                  href={linkUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="w-full px-4 py-3 flex items-center gap-3 text-xs font-medium rounded-xl hover:bg-white/10 active:bg-white/20 transition-all text-[#e7e7e7]"
-                >
-                  <ExternalLink size={15} className="text-white/75" />
-                  <span>Open Link</span>
-                </a>
-
-                {/* Edit Entry Details */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    onEdit(item);
-                  }}
-                  className="w-full px-4 py-3 flex items-center gap-3 text-xs font-medium rounded-xl hover:bg-white/10 active:bg-white/20 transition-all text-white"
-                >
-                  <Edit2 size={15} className="text-white/75" />
-                  <span>Edit Details</span>
-                </button>
-              </div>
-
-              {/* Close Label */}
-              <button
-                type="button"
-                onClick={() => setIsMenuOpen(false)}
-                className="w-full text-center text-[10px] uppercase tracking-widest text-white/40 pt-3 pb-1 hover:text-white transition-colors"
-              >
-                Tap anywhere to cancel
-              </button>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </>
   );
 };

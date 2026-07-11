@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Film, Tv, Book, Gamepad2, Star, Calendar, Monitor, Cpu, Scan } from 'lucide-react';
+import { X, Film, Tv, Book, Gamepad2, Star, Calendar, Monitor, Cpu } from 'lucide-react';
 import { MediaType, MediaItem, MediaStatus } from '../types';
 import { searchTVShows, fetchTVShowDetails, searchMovies } from '../services/tmdbService';
 import { searchBooks } from '../services/bookService';
 import { searchGames } from '../services/gameService';
-import { BarcodeScanner } from './BarcodeScanner';
 
 interface MediaFormProps {
   onClose: () => void;
@@ -43,38 +42,8 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
   const [suggestions, setSuggestions] = useState<UnifiedSuggestion[]>([]);
   const [searching, setSearching] = useState(false);
 
-  // Barcode and Open Library lookup states
+  // Book lookup state
   const [isbn, setIsbn] = useState('');
-  const [showScanner, setShowScanner] = useState(false);
-  const [isResolvingIsbn, setIsResolvingIsbn] = useState(false);
-
-  const handleBarcodeScanned = async (scannedIsbn: string) => {
-    setShowScanner(false);
-    setIsbn(scannedIsbn);
-    setIsResolvingIsbn(true);
-
-    try {
-      const res = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${scannedIsbn}&jscmd=data&format=json`);
-      if (res.ok) {
-        const data = await res.json();
-        const key = `ISBN:${scannedIsbn}`;
-        const bookInfo = data[key];
-        if (bookInfo) {
-          if (bookInfo.title) {
-            setTitle(bookInfo.title);
-          }
-          if (bookInfo.cover?.large || bookInfo.cover?.medium || bookInfo.cover?.small) {
-            const coverUrl = bookInfo.cover.large || bookInfo.cover.medium || bookInfo.cover.small;
-            setImageUrl(coverUrl);
-          }
-        }
-      }
-    } catch (err) {
-      console.error('Failed to query Open Library API metadata:', err);
-    } finally {
-      setIsResolvingIsbn(false);
-    }
-  };
 
   const isVisualMedia = [MediaType.MOVIE, MediaType.DOCUMENTARY].includes(type);
   const isInteractiveMedia = [MediaType.BOOK, MediaType.GAME, MediaType.SHOW].includes(type);
@@ -341,7 +310,7 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
               )}
             </div>
 
-            {/* Book Media Type Extra Fields: ISBN and Scan Barcode Layout Button */}
+            {/* Book Media Type Extra Fields: ISBN */}
             {type === MediaType.BOOK && (
               <div className="space-y-4 pt-1">
                 <div>
@@ -355,22 +324,6 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
                     autoComplete="off"
                   />
                 </div>
-                
-                {isResolvingIsbn && (
-                  <div className="text-xs text-[#576d87] animate-pulse flex items-center gap-2 px-1">
-                    <div className="w-2.5 h-2.5 border-2 border-primary-accent border-t-transparent rounded-full animate-spin" />
-                    <span>Resolving book details from Open Library...</span>
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => setShowScanner(true)}
-                  className="w-full bg-white/5 hover:bg-white/10 active:bg-white/15 px-4 py-3 rounded-2xl text-xs font-bold tracking-wider uppercase transition-all flex items-center justify-center gap-2 text-[#576d87] hover:text-[#e7e7e7] border-0"
-                >
-                  <Scan size={16} />
-                  <span>Add via Barcode</span>
-                </button>
               </div>
             )}
 
@@ -563,12 +516,6 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
         </form>
       </motion.div>
 
-      {showScanner && (
-        <BarcodeScanner
-          onScan={handleBarcodeScanned}
-          onClose={() => setShowScanner(false)}
-        />
-      )}
     </motion.div>
   );
 };

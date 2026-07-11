@@ -458,6 +458,24 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
               </>
             )}
 
+            {(item.status === MediaStatus.PLANNED || derivedStatus === MediaStatus.PLANNED) && (
+              <button
+                type="button"
+                onClick={() => {
+                  const today = new Date().toISOString().split('T')[0];
+                  setWatchDate(today);
+                  setEndDate(today);
+                  if (!startDate) {
+                    setStartDate(today);
+                  }
+                  setIsEditing(true);
+                }}
+                className="flex-1 px-4 py-3 bg-emerald-500/10 hover:bg-emerald-500 hover:text-app-bg text-emerald-400 border border-emerald-500/20 rounded-xl text-xs font-bold uppercase tracking-widest transition-all"
+              >
+                Mark as Tracked
+              </button>
+            )}
+
             {/* Edit Button */}
             <button
               type="button"
