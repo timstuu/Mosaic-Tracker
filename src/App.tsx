@@ -8,7 +8,6 @@ import { supabase, isSupabaseConfigured } from './lib/supabase';
 import { Auth } from './components/Auth';
 import { Layout } from './components/Layout';
 import { ActiveMediaShelf } from './components/ActiveMediaShelf';
-import { MosaicLaunch } from './components/MosaicLaunch';
 import { Analytics } from './components/Analytics';
 import { ImportModal } from './components/ImportModal';
 import { EditModal } from './components/EditModal';
@@ -16,6 +15,7 @@ import { MediaItem, MediaType, Challenge, MediaStatus } from './types';
 import { Star, Search, X, LayoutGrid, BarChart3, Settings as SettingsIcon, Trash2, Database, Shield, Bookmark, ExternalLink, Film, Tv, Book, Gamepad2, Plus, Edit2, Trophy, LogOut, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChallengeModal } from './components/ChallengeModal';
+import { ToastContainer, ToastMessage } from './components/Toast';
 
 import { MosaicView } from './components/MosaicView';
 import { MediaForm } from './components/MediaForm';
@@ -26,12 +26,19 @@ import { TrackerRow } from './components/TrackerRow';
 
 type Page = 'tracker' | 'backlog' | 'analytics' | 'friends' | 'settings';
 
+const springTransition = {
+  type: 'spring',
+  stiffness: 220,
+  damping: 26,
+  mass: 1
+};
+
 export default function App() {
   const [session, setSession] = useState<any>(null);
   const [activePage, setActivePage] = useState<Page>('tracker');
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showLaunch, setShowLaunch] = useState(false);
+  const [newlyAddedItemId, setNewlyAddedItemId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -45,6 +52,16 @@ export default function App() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [trackerTab, setTrackerTab] = useState<'library' | 'friends'>('library');
   const [showAllCompleted, setShowAllCompleted] = useState(false);
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  const addToast = (message: string, type: 'success' | 'info' | 'warning' | 'error' = 'success') => {
+    const id = Math.random().toString(36).substring(2, 9);
+    setToasts((prev) => [...prev, { id, message, type }]);
+  };
+
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
 
   const lastFetchedUserIdRef = useRef<string | null>(null);
 
@@ -238,16 +255,16 @@ export default function App() {
       
       console.log(`Successfully cleared ${label}`);
       await fetchMedia();
-      alert(`Successfully cleared ${label}.`);
+      addToast(`Successfully cleared ${label}.`, 'success');
     } catch (error) {
       console.error(`Failed to clear ${label}:`, error);
-      alert(`Failed to clear ${label}. Please check the console for details.`);
+      addToast(`Failed to clear ${label}.`, 'error');
     }
   };
 
   const handleSaveMedia = async (item: Partial<MediaItem>) => {
     if (!isSupabaseConfigured) {
-      alert('Please configure Supabase in your environment variables first.');
+      addToast('Please configure Supabase first.', 'error');
       return;
     }
     try {
@@ -267,15 +284,21 @@ export default function App() {
 
       const itemWithUser = { ...dbItem, user_id: user.id };
 
-      const { error } = await supabase
+      const { data: insertData, error } = await supabase
         .from('media_items')
-        .insert(itemWithUser);
+        .insert(itemWithUser)
+        .select('id');
       
       if (error) throw error;
-      setShowLaunch(true);
+      if (insertData && insertData[0]) {
+        setNewlyAddedItemId(insertData[0].id);
+        setTimeout(() => setNewlyAddedItemId(null), 3000);
+      }
+      addToast(`Successfully added "${item.title}".`, 'success');
       fetchMedia();
     } catch (error) {
       console.error('Failed to save media:', error);
+      addToast('Failed to save media item.', 'error');
     }
   };
 
@@ -295,14 +318,21 @@ export default function App() {
         user_id: user.id
       };
 
-      const { error } = await supabase
+      const { data: insertData, error } = await supabase
         .from('media_items')
-        .insert(newItem);
+        .insert(newItem)
+        .select('id');
       
       if (error) throw error;
+      if (insertData && insertData[0]) {
+        setNewlyAddedItemId(insertData[0].id);
+        setTimeout(() => setNewlyAddedItemId(null), 3000);
+      }
+      addToast(`Added "${item.title}" to backlog.`, 'success');
       fetchMedia();
     } catch (error) {
       console.error('Failed to add recommendation to backlog:', error);
+      addToast('Failed to add to backlog.', 'error');
       throw error;
     }
   };
@@ -332,10 +362,25 @@ export default function App() {
         .eq('id', item.id);
       
       if (error) throw error;
+      
+      const originalItem = mediaItems.find(i => i.id === item.id);
+      const isMoving = originalItem && originalItem.status === MediaStatus.PLANNED && item.status && item.status !== MediaStatus.PLANNED;
+      
+      if (isMoving) {
+        if (item.id) {
+          setNewlyAddedItemId(item.id);
+          setTimeout(() => setNewlyAddedItemId(null), 3000);
+        }
+        addToast(`Successfully moved "${item.title || originalItem.title}" to Tracker!`, 'success');
+      } else {
+        addToast(`Successfully updated "${item.title || (originalItem ? originalItem.title : '')}".`, 'success');
+      }
+
       setEditingItem(null);
       fetchMedia();
     } catch (error) {
       console.error('Failed to update media:', error);
+      addToast('Failed to update media.', 'error');
     }
   };
 
@@ -363,6 +408,12 @@ export default function App() {
       prevItems.map(i => i.id === item.id ? { ...i, ...updatedProps } : i)
     );
 
+    if (item.totalEpisodes && nextEpisode >= item.totalEpisodes) {
+      addToast(`Congratulations on completing "${item.title}"!`, 'success');
+    } else {
+      addToast(`Incremented "${item.title}" to Episode ${nextEpisode}.`, 'success');
+    }
+
     try {
       // Direct db sync
       const { error } = await supabase
@@ -377,6 +428,7 @@ export default function App() {
       if (error) throw error;
     } catch (error) {
       console.error('Failed to sync inline episode increment to Supabase:', error);
+      addToast('Failed to sync episode update.', 'error');
       // Fallback reload if there is any error
       fetchMedia();
     }
@@ -385,6 +437,8 @@ export default function App() {
   const handleDeleteMedia = async (id: string) => {
     if (!isSupabaseConfigured) return;
     console.log('Attempting to delete media with id:', id);
+    const deletedItem = mediaItems.find(i => i.id === id);
+    const title = deletedItem ? deletedItem.title : 'item';
     try {
       const { error } = await supabase
         .from('media_items')
@@ -394,10 +448,11 @@ export default function App() {
       if (error) throw error;
       console.log('Successfully deleted media');
       setEditingItem(null);
+      addToast(`Successfully deleted "${title}".`, 'success');
       fetchMedia();
     } catch (error) {
       console.error('Error during delete media request:', error);
-      alert('An error occurred while trying to delete the item.');
+      addToast('Failed to delete item.', 'error');
     }
   };
 
@@ -605,6 +660,7 @@ const dateB = new Date(b.watchDate || b.endDate || b.dateAdded || 0).getTime() |
             <MosaicView 
               items={filteredAndSortedItems} 
               onItemClick={setEditingItem} 
+              newlyAddedItemId={newlyAddedItemId}
             />
           ) : (
             renderList(filteredAndSortedItems)
@@ -686,6 +742,7 @@ const dateB = new Date(b.watchDate || b.endDate || b.dateAdded || 0).getTime() |
               <MosaicView 
                 items={displayedCompleted} 
                 onItemClick={setEditingItem} 
+                newlyAddedItemId={newlyAddedItemId}
               />
               {hasOlderItems && (
                 <button
@@ -797,40 +854,65 @@ const dateB = new Date(b.watchDate || b.endDate || b.dateAdded || 0).getTime() |
                 <div className="overflow-hidden">
                   {backlogViewMode === 'mosaic' ? (
                     <div className="grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-4 p-2">
-                      {displayedItems.map((item) => {
-                        try {
-                          if (!item || !item.title) return null;
-                          return (
-                            <motion.div
-                              key={item.id}
-                              initial={{ opacity: 0, scale: 0.9 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              whileTap={{ scale: 0.98 }}
-                              className="relative aspect-[2/3] rounded-lg overflow-hidden group cursor-pointer shadow-lg shadow-black/40 border border-white/10"
-                              onClick={() => setEditingItem(item)}
-                            >
-                              {item.imageUrl ? (
-                                <img 
-                                  src={item.imageUrl} 
-                                  alt={item.title} 
-                                  referrerPolicy="no-referrer"
-                                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                                />
-                              ) : (
-                                <div className="w-full h-full bg-white/5 flex flex-col items-center justify-center text-zinc-500 p-2 text-center">
-                                  <div className="text-primary-accent/60 mb-2">
-                                    {typeIcons[mediaType]}
+                      <AnimatePresence initial={false}>
+                        {displayedItems.map((item) => {
+                          try {
+                            if (!item || !item.title) return null;
+                            const isNew = item.id === newlyAddedItemId;
+                            return (
+                              <motion.div
+                                layout
+                                key={item.id}
+                                initial={isNew ? { 
+                                  opacity: 0, 
+                                  scale: 0.1,
+                                  clipPath: 'inset(15% 15% 15% 15% rounded 8px)'
+                                } : { 
+                                  opacity: 0, 
+                                  scale: 0.9 
+                                }}
+                                animate={{ 
+                                  opacity: 1, 
+                                  scale: 1,
+                                  clipPath: 'inset(0% 0% 0% 0% rounded 8px)'
+                                }}
+                                exit={{ 
+                                  opacity: 0, 
+                                  scale: 0.9 
+                                }}
+                                transition={{
+                                  layout: springTransition,
+                                  opacity: isNew ? { duration: 0.45, ease: [0.25, 1, 0.5, 1] } : springTransition,
+                                  scale: isNew ? { duration: 0.45, ease: [0.25, 1, 0.5, 1] } : springTransition,
+                                  clipPath: isNew ? { duration: 0.45, ease: [0.25, 1, 0.5, 1] } : springTransition
+                                }}
+                                whileTap={{ scale: 0.98 }}
+                                className="relative aspect-[2/3] rounded-lg overflow-hidden group cursor-pointer shadow-lg shadow-black/40 border border-white/10"
+                                onClick={() => setEditingItem(item)}
+                              >
+                                {item.imageUrl ? (
+                                  <img 
+                                    src={item.imageUrl} 
+                                    alt={item.title} 
+                                    referrerPolicy="no-referrer"
+                                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full bg-white/5 flex flex-col items-center justify-center text-zinc-500 p-2 text-center">
+                                    <div className="text-primary-accent/60 mb-2">
+                                      {typeIcons[mediaType]}
+                                    </div>
+                                    <span className="text-[10px] uppercase tracking-widest line-clamp-2">{item.title}</span>
                                   </div>
-                                  <span className="text-[10px] uppercase tracking-widest line-clamp-2">{item.title}</span>
-                                </div>
-                              )}
-                            </motion.div>
-                          );
-                        } catch (err) {
-                          console.error("Error rendering item in backlog mosaic:", item, err);
-                          return null;
-                        }
-                      })}
+                                )}
+                              </motion.div>
+                            );
+                          } catch (err) {
+                            console.error("Error rendering item in backlog mosaic:", item, err);
+                            return null;
+                          }
+                        })}
+                      </AnimatePresence>
                     </div>
                   ) : (
                     <div className="overflow-hidden border border-white/[0.02] rounded-2xl bg-white/[0.01]">
@@ -1037,10 +1119,7 @@ const dateB = new Date(b.watchDate || b.endDate || b.dateAdded || 0).getTime() |
         onSave={handleSaveChallenge}
       />
 
-      <MosaicLaunch 
-        isVisible={showLaunch} 
-        onComplete={() => setShowLaunch(false)} 
-      />
+      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </Layout>
   );
 

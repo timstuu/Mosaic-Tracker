@@ -1,10 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Film, Tv, Book, Gamepad2, Star, Calendar, Monitor, Cpu } from 'lucide-react';
+import { X, Film, Tv, Book, Gamepad2, Star, Calendar, Monitor, Cpu, Sparkles } from 'lucide-react';
 import { MediaType, MediaStatus, MediaItem } from '../types';
 import { fetchMediaPoster, fetchSimilarRecommendations, TMDbRecommendation } from '../services/tmdbService';
 import { fetchBookCover } from '../services/bookService';
 import { fetchGameCover } from '../services/gameService';
+import { supabase } from '../lib/supabase';
+
+const parseNotes = (text: string) => {
+  if (!text) return null;
+  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+  if (lines.length >= 2 && lines[0].includes('|')) {
+    const genres = lines[0].split('|').map(g => g.trim()).filter(Boolean);
+    const summary = lines.slice(1).join('\n');
+    return { genres, summary };
+  }
+  return null;
+};
 
 interface EditModalProps {
   item: MediaItem;
@@ -31,6 +43,54 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
   const [isDnf, setIsDnf] = useState(item.status === MediaStatus.DNF);
 
   const [addedIds, setAddedIds] = useState<number[]>([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const handleGetSummary = async () => {
+    setIsAnalyzing(true);
+    setErrorMsg(null);
+    try {
+      const response = await fetch('/api/gemini/synopsis', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title,
+          type,
+        }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to generate synopsis');
+      }
+
+      const data = await response.json();
+      const newSynopsis = data.synopsis;
+
+      if (newSynopsis) {
+        setNotes(newSynopsis);
+
+        if (item.id) {
+          const { error: dbError } = await supabase
+            .from('media_items')
+            .update({ notes: newSynopsis })
+            .eq('id', item.id);
+
+          if (dbError) {
+            console.error('Failed to update Supabase notes with synopsis:', dbError);
+            setErrorMsg('Synced locally, but database save failed.');
+          }
+        }
+      }
+    } catch (err: any) {
+      console.error('Error generating summary:', err);
+      setErrorMsg(err.message || 'Failed to get synopsis.');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   // TV progress state variables
   const [currentSeason, setCurrentSeason] = useState(item.currentSeason || 1);
@@ -251,6 +311,25 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
               </div>
             </div>
 
+            {/* AI Synopsis Trigger */}
+            <div className="flex flex-col gap-1.5 pt-1">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleGetSummary}
+                  disabled={isAnalyzing}
+                  className="text-xs font-medium text-[#576d87] hover:text-[#e7e7e7] transition-colors bg-transparent border-none p-0 cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  <Sparkles size={12} className={isAnalyzing ? "animate-pulse" : ""} />
+                  {isAnalyzing ? "Analyzing..." : "Get summary"}
+                </button>
+              </div>
+              {errorMsg && (
+                <span className="text-[10px] text-red-400 font-medium">
+                  {errorMsg}
+                </span>
+              )}
+            </div>
+
             {/* Dates Grid */}
             {(watchDate || startDate || endDate) && (
               <div className="bg-[#242d3a]/30 border border-white/5 rounded-2xl p-4 grid grid-cols-2 gap-4 text-xs">
@@ -307,14 +386,39 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
             )}
 
             {/* Personal Notes */}
-            {notes && (
-              <div className="space-y-1.5">
-                <span className="block text-[10px] font-bold text-[#576d87] uppercase tracking-widest">Personal Notes</span>
-                <blockquote className="bg-app-bg border-l-2 border-primary-accent/40 rounded-r-xl p-4 text-xs text-zinc-300 italic whitespace-pre-wrap leading-relaxed">
-                  "{notes}"
-                </blockquote>
-              </div>
-            )}
+            {notes && (() => {
+              const parsed = parseNotes(notes);
+              if (parsed) {
+                return (
+                  <div className="space-y-4">
+                    <div className="space-y-1">
+                      <span className="block text-[10px] font-bold text-[#576d87] uppercase tracking-widest">Genres</span>
+                      <div className="flex flex-wrap gap-1.5 pt-0.5">
+                        {parsed.genres.map((genre, idx) => (
+                          <span key={idx} className="px-2.5 py-0.5 bg-white/5 border border-white/10 rounded-full text-[9px] font-bold text-primary-accent uppercase tracking-widest">
+                            {genre}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <span className="block text-[10px] font-bold text-[#576d87] uppercase tracking-widest">Synopsis</span>
+                      <blockquote className="bg-app-bg border-l-2 border-primary-accent/40 rounded-r-xl p-4 text-xs text-zinc-300 italic whitespace-pre-wrap leading-relaxed">
+                        "{parsed.summary}"
+                      </blockquote>
+                    </div>
+                  </div>
+                );
+              }
+              return (
+                <div className="space-y-1.5">
+                  <span className="block text-[10px] font-bold text-[#576d87] uppercase tracking-widest">Personal Notes</span>
+                  <blockquote className="bg-app-bg border-l-2 border-primary-accent/40 rounded-r-xl p-4 text-xs text-zinc-300 italic whitespace-pre-wrap leading-relaxed">
+                    "{notes}"
+                  </blockquote>
+                </div>
+              );
+            })()}
 
             {/* Tags */}
             {tags && (

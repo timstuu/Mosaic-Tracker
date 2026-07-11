@@ -1,14 +1,22 @@
 import React from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Star, Film, Tv, Book, Gamepad2 } from 'lucide-react';
 import { MediaItem, MediaType, MediaStatus } from '../types';
 
 interface MosaicViewProps {
   items: MediaItem[];
   onItemClick: (item: MediaItem) => void;
+  newlyAddedItemId?: string | null;
 }
 
-export const MosaicView: React.FC<MosaicViewProps> = ({ items, onItemClick }) => {
+const springTransition = {
+  type: 'spring',
+  stiffness: 220,
+  damping: 26,
+  mass: 1
+};
+
+export const MosaicView: React.FC<MosaicViewProps> = ({ items, onItemClick, newlyAddedItemId }) => {
   const groupedItems = items.reduce((acc, item) => {
     const rawDate = item.watchDate || item.endDate || item.dateAdded;
     let date = new Date(rawDate || 0);
@@ -24,64 +32,89 @@ export const MosaicView: React.FC<MosaicViewProps> = ({ items, onItemClick }) =>
   }, {} as Record<string, MediaItem[]>);
 
   return (
-    <div className="space-y-8 p-4 md:p-6">
+    <div className="space-y-8 p-4 md:p-6 overflow-hidden">
       {Object.entries(groupedItems).map(([monthYear, monthItems]: [string, MediaItem[]]) => (
         <div key={monthYear}>
           <div className="mb-4 px-2 py-1 border-b border-white/10 text-sm font-bold text-primary-accent uppercase tracking-widest">
             {monthYear}
           </div>
           <div className="grid grid-cols-3 md:grid-cols-6 gap-2 md:gap-4">
-            {monthItems.map((item) => {
-              try {
-                if (!item || !item.title) return null;
-                return (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="relative aspect-[2/3] rounded-lg overflow-hidden group cursor-pointer shadow-lg shadow-black/40 border border-white/10"
-                    onClick={() => onItemClick(item)}
-                  >
-                    {item.imageUrl ? (
-                      <img 
-                        src={item.imageUrl} 
-                        alt={item.title} 
-                        referrerPolicy="no-referrer"
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-white/5 flex flex-col items-center justify-center text-zinc-500 p-2 text-center">
-                        {item.type === MediaType.MOVIE || item.type === MediaType.DOCUMENTARY ? <Film size={24} className="mb-2" /> : 
-                         item.type === MediaType.SHOW ? <Tv size={24} className="mb-2" /> :
-                         item.type === MediaType.BOOK ? <Book size={24} className="mb-2" /> : <Gamepad2 size={24} className="mb-2" />}
-                        <span className="text-[10px] uppercase tracking-widest line-clamp-2">{item.title}</span>
-                      </div>
-                    )}
-                    {item.status === MediaStatus.DNF && (
-                      <div className="absolute top-1 -right-7 w-24 md:top-2 md:-right-8 md:w-28 bg-[#6b1e1e]/95 text-white text-[8px] md:text-[10px] font-bold text-center py-0.5 md:py-1 shadow-md rotate-45 z-10 pointer-events-none uppercase tracking-widest">
-                        DNF
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
-                      <div className="w-full flex justify-between items-center">
-                        <div className="flex gap-0.5">
-                          {[...Array(5)].map((_, i) => (
-                            <Star 
-                              key={i} 
-                              size={8}
-                              className={`${i < item.rating ? 'fill-primary-accent text-primary-accent' : 'text-zinc-700'}`} 
-                            />
-                          ))}
+            <AnimatePresence initial={false}>
+              {monthItems.map((item) => {
+                try {
+                  if (!item || !item.title) return null;
+                  const isNew = item.id === newlyAddedItemId;
+                  return (
+                    <motion.div
+                      layout
+                      key={item.id}
+                      initial={isNew ? { 
+                        opacity: 0, 
+                        scale: 0.1,
+                        clipPath: 'inset(15% 15% 15% 15% rounded 8px)'
+                      } : { 
+                        opacity: 0, 
+                        scale: 0.9 
+                      }}
+                      animate={{ 
+                        opacity: 1, 
+                        scale: 1,
+                        clipPath: 'inset(0% 0% 0% 0% rounded 8px)'
+                      }}
+                      exit={{ 
+                        opacity: 0, 
+                        scale: 0.9 
+                      }}
+                      transition={{
+                        layout: springTransition,
+                        opacity: isNew ? { duration: 0.45, ease: [0.25, 1, 0.5, 1] } : springTransition,
+                        scale: isNew ? { duration: 0.45, ease: [0.25, 1, 0.5, 1] } : springTransition,
+                        clipPath: isNew ? { duration: 0.45, ease: [0.25, 1, 0.5, 1] } : springTransition
+                      }}
+                      className="relative aspect-[2/3] rounded-lg overflow-hidden group cursor-pointer shadow-lg shadow-black/40 border border-white/10"
+                      onClick={() => onItemClick(item)}
+                    >
+                      {item.imageUrl ? (
+                        <img 
+                          src={item.imageUrl} 
+                          alt={item.title} 
+                          referrerPolicy="no-referrer"
+                          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-white/5 flex flex-col items-center justify-center text-zinc-500 p-2 text-center">
+                          {item.type === MediaType.MOVIE || item.type === MediaType.DOCUMENTARY ? <Film size={24} className="mb-2" /> : 
+                           item.type === MediaType.SHOW ? <Tv size={24} className="mb-2" /> :
+                           item.type === MediaType.BOOK ? <Book size={24} className="mb-2" /> : <Gamepad2 size={24} className="mb-2" />}
+                          <span className="text-[10px] uppercase tracking-widest line-clamp-2">{item.title}</span>
+                        </div>
+                      )}
+                      {item.status === MediaStatus.DNF && (
+                        <div className="absolute top-1 -right-7 w-24 md:top-2 md:-right-8 md:w-28 bg-[#6b1e1e]/95 text-white text-[8px] md:text-[10px] font-bold text-center py-0.5 md:py-1 shadow-md rotate-45 z-10 pointer-events-none uppercase tracking-widest">
+                          DNF
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+                        <div className="w-full flex justify-between items-center">
+                          <div className="flex gap-0.5">
+                            {[...Array(5)].map((_, i) => (
+                              <Star 
+                                key={i} 
+                                size={8}
+                                className={`${i < item.rating ? 'fill-primary-accent text-primary-accent' : 'text-zinc-700'}`} 
+                              />
+                            ))}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </motion.div>
-                );
-              } catch (err) {
-                console.error("Error rendering item in MosaicView:", item, err);
-                return null;
-              }
-            })}
+                    </motion.div>
+                  );
+                } catch (err) {
+                  console.error("Error rendering item in MosaicView:", item, err);
+                  return null;
+                }
+              })}
+            </AnimatePresence>
           </div>
         </div>
       ))}
