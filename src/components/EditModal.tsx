@@ -6,6 +6,7 @@ import { fetchMediaPoster, fetchSimilarRecommendations, TMDbRecommendation } fro
 import { fetchBookCover } from '../services/bookService';
 import { fetchGameCover } from '../services/gameService';
 import { supabase } from '../lib/supabase';
+import { GoogleGenAI } from '@google/genai';
 
 const parseNotes = (text: string) => {
   if (!text) return null;
@@ -16,6 +17,40 @@ const parseNotes = (text: string) => {
     return { genres, summary };
   }
   return null;
+};
+
+const generateSynopsisClientSide = async (title: string, type: string) => {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey || apiKey === 'your-gemini-api-key') {
+    throw new Error('No valid Gemini API key configured locally or on the server.');
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  const systemInstruction = `You are a professional metadata analyzer and film critic. 
+Analyze the requested media item and output exactly in the requested format.
+Do not use markdown code blocks (such as \`\`\`), do not include introductory phrases, do not use bold labels.
+`;
+
+  const prompt = `Provide the genres and a synopsis for the ${type || 'movie'} titled "${title}".
+Format the output EXACTLY like this:
+[Genre 1] | [Genre 2] | [Genre 3]
+[A sharp, highly compact, and elegant 2-3 sentence plot summary focusing on thematic core elements.]
+
+For example:
+Sci-Fi | Drama | Mystery
+A disgraced astronaut discovers an anomalous gravitational shifting point in deep space. As he monitors the distortion, he realizes it mirrors his own fragmented domestic memories on Earth.`;
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-3.5-flash',
+    contents: prompt,
+    config: {
+      systemInstruction,
+      temperature: 0.2,
+    }
+  });
+
+  return response.text || '';
 };
 
 interface EditModalProps {
@@ -52,26 +87,36 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
     setIsAnalyzing(true);
     setErrorMsg(null);
     try {
-      // Prepend BASE_URL to support subpath proxy routing on mobile & external clients
-      const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, '');
-      const response = await fetch(`${baseUrl}/api/gemini/synopsis`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title,
-          type,
-        }),
-      });
+      let newSynopsis = '';
 
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error || 'Failed to generate synopsis');
+      // Try server-side first
+      try {
+        const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, '');
+        const response = await fetch(`${baseUrl}/api/gemini/synopsis`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            title,
+            type,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          newSynopsis = data.synopsis;
+        } else if (response.status === 405 || response.status === 404) {
+          console.warn('Backend synopsis route not supported (404/405). Trying client-side fallback...');
+          newSynopsis = await generateSynopsisClientSide(title, type);
+        } else {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error || 'Failed to generate synopsis');
+        }
+      } catch (backendErr) {
+        console.warn('Backend synopsis request failed, trying client-side fallback...', backendErr);
+        newSynopsis = await generateSynopsisClientSide(title, type);
       }
-
-      const data = await response.json();
-      const newSynopsis = data.synopsis;
 
       if (newSynopsis) {
         // Parse the synopsis to extract genres and actual summary
