@@ -32,8 +32,8 @@ async function startServer() {
     return aiClient;
   }
 
-  // API route for Gemini Summary
-  app.post("/api/gemini/synopsis", async (req, res) => {
+  // API route for Gemini Summary - supporting both root and base-prefixed paths for subpath/mobile routing
+  app.post(["/api/gemini/synopsis", "/Mosaic-Tracker/api/gemini/synopsis"], async (req, res) => {
     try {
       const { title, type } = req.body;
       if (!title) {

@@ -204,8 +204,14 @@ export const FriendsView: React.FC<FriendsViewProps> = ({ session, onAddToBacklo
   };
 
   return (
-    <div className="space-y-12 select-none">
-      {/* Elegantly styled network timeout or offline warning banner */}
+    <div className="max-w-4xl mx-auto px-0 pb-24 font-sans select-none animate-fadeIn">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-[#e7e7e7] mb-2 font-sans tracking-tight">Friends</h1>
+        <p className="text-[#576d87] text-xs uppercase tracking-wider">See what your friends have completed recently.</p>
+      </div>
+
+      <div className="space-y-12">
+        {/* Elegantly styled network timeout or offline warning banner */}
       {error && (
         <div className="bg-red-500/10 border border-red-500/20 rounded-[2rem] p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-[#e7e7e7] animate-fadeIn">
           <div className="space-y-1">
@@ -424,6 +430,7 @@ export const FriendsView: React.FC<FriendsViewProps> = ({ session, onAddToBacklo
           </div>
         )}
       </AnimatePresence>
+      </div>
     </div>
   );
 };

@@ -364,6 +364,12 @@ export const Settings: React.FC<SettingsProps> = ({
   return (
     <div className="max-w-4xl mx-auto px-0 pb-24 font-sans select-none">
       
+      {/* Tab Header aligned with Tracker and Backlog Tabs */}
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-[#e7e7e7] mb-2 font-sans tracking-tight">Settings</h1>
+        <p className="text-[#576d87] text-xs uppercase tracking-wider">Configure your profile, connect with friends, and manage your data.</p>
+      </div>
+
       {/* 
         NO BORDER CONTAINERS: Entire view uses generous vertical margins and clear
         typography-based rhythm for beautiful visual divisions.
@@ -393,13 +399,15 @@ export const Settings: React.FC<SettingsProps> = ({
           </div>
         </div>
 
-        <button
+        <motion.button
           onClick={() => fileInputRef.current?.click()}
           type="button"
-          className="mt-4 text-xs font-semibold text-[#576d87] hover:text-[#e7e7e7] transition-all tracking-wider uppercase"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="mt-4 text-xs font-semibold text-[#576d87] hover:text-[#e7e7e7] transition-all tracking-wider uppercase focus:outline-none"
         >
           Change Photo
-        </button>
+        </motion.button>
 
         <input 
           type="file" 
@@ -412,9 +420,8 @@ export const Settings: React.FC<SettingsProps> = ({
 
       {/* 2. Friends System Zone */}
       <div className="my-16">
-        <div className="flex items-center gap-3 mb-8">
-          <Users size={16} className="text-[#576d87]" />
-          <h2 className="text-sm font-bold text-white uppercase tracking-widest leading-none">Friends and Connections</h2>
+        <div className="flex justify-between items-center border-b border-[#576d87]/10 pb-2 mb-8 font-sans">
+          <span className="text-[10px] uppercase tracking-widest font-bold text-white">Friends and Connections</span>
         </div>
 
         {/* Minimal Search Field */}
@@ -467,12 +474,14 @@ export const Settings: React.FC<SettingsProps> = ({
                     )}
                     <span className="text-sm font-medium text-white">{user.username}</span>
                   </div>
-                  <button
+                  <motion.button
                     onClick={() => addFriend(user)}
-                    className="p-1 px-3 text-[10px] font-bold text-white bg-white/5 hover:bg-white/10 rounded-full flex items-center gap-1.5 transition-all uppercase tracking-wider"
+                    whileHover={{ scale: 1.05, backgroundColor: "rgba(255, 255, 255, 0.12)" }}
+                    whileTap={{ scale: 0.95 }}
+                    className="p-1 px-3 text-[10px] font-bold text-white bg-white/5 rounded-full flex items-center gap-1.5 transition-all uppercase tracking-wider focus:outline-none"
                   >
                     <UserPlus size={10} /> Add Friend
-                  </button>
+                  </motion.button>
                 </div>
               ))}
             </motion.div>
@@ -523,119 +532,145 @@ export const Settings: React.FC<SettingsProps> = ({
 
       {/* 3. Original Data Services Section (Fully Integrated) */}
       <div className="my-16">
-        <div className="flex items-center gap-3 mb-8">
-          <Database size={16} className="text-[#576d87]" />
-          <h2 className="text-sm font-bold text-white uppercase tracking-widest leading-none">Database & Data Management</h2>
+        <div className="flex justify-between items-center border-b border-[#576d87]/10 pb-2 mb-8 font-sans">
+          <span className="text-[10px] uppercase tracking-widest font-bold text-white">Database & Data Management</span>
         </div>
 
+        {/* Unified spacing-grouped stack for database services, outer container card removed */}
         <div className="space-y-6">
-          <button 
-            onClick={() => handleExportData()}
-            className="w-full flex items-center justify-between py-4 border-b border-white/[0.04] hover:border-white/10 group transition-all"
-          >
-            <div className="flex flex-col items-start pr-4">
-              <span className="text-sm text-white font-medium group-hover:text-primary-accent transition-colors">Export Library (JSON)</span>
-              <span className="text-[10px] text-[#576d87] uppercase tracking-widest mt-0.5">All tracked data to backup</span>
-            </div>
-            <div className="text-[#576d87] group-hover:translate-x-1 transition-transform">→</div>
-          </button>
+          
+          {/* Group 1: Export Actions */}
+          <div className="flex flex-col bg-white/[0.015] border border-white/5 rounded-2xl overflow-hidden transition-all">
+            <motion.button 
+              onClick={() => handleExportData()}
+              whileHover={{ scale: 1.002, backgroundColor: "rgba(255, 255, 255, 0.02)" }}
+              whileTap={{ scale: 0.998 }}
+              className="w-full flex items-center justify-between px-6 py-4 border-b border-white/[0.04] group text-left transition-all focus:outline-none"
+            >
+              <div className="flex flex-col items-start pr-4">
+                <span className="text-sm text-white font-medium group-hover:text-primary-accent transition-colors">Export Library (JSON)</span>
+                <span className="text-[10px] text-[#576d87] uppercase tracking-widest mt-0.5">All tracked data to backup</span>
+              </div>
+              <div className="text-[#576d87] group-hover:translate-x-1 transition-transform">→</div>
+            </motion.button>
 
-          <button 
-            onClick={() => handleExportData(MediaStatus.COMPLETED)}
-            className="w-full flex items-center justify-between py-4 border-b border-white/[0.04] hover:border-white/10 group transition-all"
-          >
-            <div className="flex flex-col items-start pr-4">
-              <span className="text-sm text-white font-medium group-hover:text-primary-accent transition-colors">Export Tracker (JSON)</span>
-              <span className="text-[10px] text-[#576d87] uppercase tracking-widest mt-0.5">Completed archive data</span>
-            </div>
-            <div className="text-[#576d87] group-hover:translate-x-1 transition-transform">→</div>
-          </button>
+            <motion.button 
+              onClick={() => handleExportData(MediaStatus.COMPLETED)}
+              whileHover={{ scale: 1.002, backgroundColor: "rgba(255, 255, 255, 0.02)" }}
+              whileTap={{ scale: 0.998 }}
+              className="w-full flex items-center justify-between px-6 py-4 border-b border-white/[0.04] group text-left transition-all focus:outline-none"
+            >
+              <div className="flex flex-col items-start pr-4">
+                <span className="text-sm text-white font-medium group-hover:text-primary-accent transition-colors">Export Tracker (JSON)</span>
+                <span className="text-[10px] text-[#576d87] uppercase tracking-widest mt-0.5">Completed archive data</span>
+              </div>
+              <div className="text-[#576d87] group-hover:translate-x-1 transition-transform">→</div>
+            </motion.button>
 
-          <button 
-            onClick={() => handleExportData(MediaStatus.PLANNED)}
-            className="w-full flex items-center justify-between py-4 border-b border-white/[0.04] hover:border-white/10 group transition-all"
-          >
-            <div className="flex flex-col items-start pr-4">
-              <span className="text-sm text-white font-medium group-hover:text-primary-accent transition-colors">Export Backlog (JSON)</span>
-              <span className="text-[10px] text-[#576d87] uppercase tracking-widest mt-0.5">Planned items checklist</span>
-            </div>
-            <div className="text-[#576d87] group-hover:translate-x-1 transition-transform">→</div>
-          </button>
+            <motion.button 
+              onClick={() => handleExportData(MediaStatus.PLANNED)}
+              whileHover={{ scale: 1.002, backgroundColor: "rgba(255, 255, 255, 0.02)" }}
+              whileTap={{ scale: 0.998 }}
+              className="w-full flex items-center justify-between px-6 py-4 group text-left transition-all focus:outline-none"
+            >
+              <div className="flex flex-col items-start pr-4">
+                <span className="text-sm text-white font-medium group-hover:text-primary-accent transition-colors">Export Backlog (JSON)</span>
+                <span className="text-[10px] text-[#576d87] uppercase tracking-widest mt-0.5">Planned items checklist</span>
+              </div>
+              <div className="text-[#576d87] group-hover:translate-x-1 transition-transform">→</div>
+            </motion.button>
+          </div>
 
-          <button 
-            onClick={() => jsonUploadRef.current?.click()}
-            className="w-full flex items-center justify-between py-4 border-b border-white/[0.04] hover:border-white/10 group transition-all"
-          >
-            <div className="flex flex-col items-start pr-4">
-              <span className="text-sm text-white font-medium group-hover:text-primary-accent transition-colors">Import Library (JSON)</span>
-              <span className="text-[10px] text-[#576d87] uppercase tracking-widest mt-0.5">Restore entire media index</span>
-            </div>
-            <div className="text-[#576d87] group-hover:translate-x-1 transition-transform">→</div>
-            <input 
-              type="file" 
-              ref={jsonUploadRef} 
-              onChange={handleJsonImportChange} 
-              accept=".json" 
-              className="hidden" 
-            />
-          </button>
+          {/* Group 2: Import Actions */}
+          <div className="flex flex-col bg-white/[0.015] border border-white/5 rounded-2xl overflow-hidden transition-all">
+            <motion.button 
+              onClick={() => jsonUploadRef.current?.click()}
+              whileHover={{ scale: 1.002, backgroundColor: "rgba(255, 255, 255, 0.02)" }}
+              whileTap={{ scale: 0.998 }}
+              className="w-full flex items-center justify-between px-6 py-4 border-b border-white/[0.04] group text-left transition-all focus:outline-none"
+            >
+              <div className="flex flex-col items-start pr-4">
+                <span className="text-sm text-white font-medium group-hover:text-primary-accent transition-colors">Import Library (JSON)</span>
+                <span className="text-[10px] text-[#576d87] uppercase tracking-widest mt-0.5">Restore entire media index</span>
+              </div>
+              <div className="text-[#576d87] group-hover:translate-x-1 transition-transform">→</div>
+              <input 
+                type="file" 
+                ref={jsonUploadRef} 
+                onChange={handleJsonImportChange} 
+                accept=".json" 
+                className="hidden" 
+              />
+            </motion.button>
 
-          <button 
-            onClick={() => {
-              setImportMode('library');
-              setIsImportModalOpen(true);
-            }}
-            className="w-full flex items-center justify-between py-4 border-b border-white/[0.04] hover:border-white/10 group transition-all"
-          >
-            <span className="text-sm text-white font-medium group-hover:text-primary-accent transition-colors">Import Library (CSV)</span>
-            <div className="text-[#576d87] group-hover:translate-x-1 transition-transform">→</div>
-          </button>
+            <motion.button 
+              onClick={() => {
+                setImportMode('library');
+                setIsImportModalOpen(true);
+              }}
+              whileHover={{ scale: 1.002, backgroundColor: "rgba(255, 255, 255, 0.02)" }}
+              whileTap={{ scale: 0.998 }}
+              className="w-full flex items-center justify-between px-6 py-4 border-b border-white/[0.04] group text-left transition-all focus:outline-none"
+            >
+              <span className="text-sm text-white font-medium group-hover:text-primary-accent transition-colors">Import Library (CSV)</span>
+              <div className="text-[#576d87] group-hover:translate-x-1 transition-transform">→</div>
+            </motion.button>
 
-          <button 
-            onClick={() => {
-              setImportMode('watchlist');
-              setIsImportModalOpen(true);
-            }}
-            className="w-full flex items-center justify-between py-4 border-b border-white/[0.04] hover:border-white/10 group transition-all"
-          >
-            <div className="flex flex-col items-start pr-4">
-              <span className="text-sm text-white font-medium group-hover:text-primary-accent transition-colors">Import Letterboxd Watchlist</span>
-              <span className="text-[10px] text-[#576d87] uppercase tracking-widest mt-0.5">Incorporate public watchlist</span>
-            </div>
-            <div className="text-[#576d87] group-hover:translate-x-1 transition-transform">→</div>
-          </button>
+            <motion.button 
+              onClick={() => {
+                setImportMode('watchlist');
+                setIsImportModalOpen(true);
+              }}
+              whileHover={{ scale: 1.002, backgroundColor: "rgba(255, 255, 255, 0.02)" }}
+              whileTap={{ scale: 0.998 }}
+              className="w-full flex items-center justify-between px-6 py-4 group text-left transition-all focus:outline-none"
+            >
+              <div className="flex flex-col items-start pr-4">
+                <span className="text-sm text-white font-medium group-hover:text-primary-accent transition-colors">Import Letterboxd Watchlist</span>
+                <span className="text-[10px] text-[#576d87] uppercase tracking-widest mt-0.5">Incorporate public watchlist</span>
+              </div>
+              <div className="text-[#576d87] group-hover:translate-x-1 transition-transform">→</div>
+            </motion.button>
+          </div>
 
-          <button 
-            onClick={() => handleClearData(MediaStatus.COMPLETED)}
-            type="button"
-            className="w-full flex items-center justify-between py-4 border-b border-white/[0.04] text-red-400 hover:text-red-300 transition-colors"
-          >
-            <div className="flex flex-col items-start pr-4">
-              <span className="text-sm font-medium">Clear Tracker History</span>
-              <span className="text-[10px] text-red-400/60 uppercase tracking-widest mt-0.5">Permanent purge completed items</span>
-            </div>
-            <Trash2 size={15} className="text-red-500/40" />
-          </button>
+          {/* Group 3: Danger / Purge Actions */}
+          <div className="flex flex-col bg-white/[0.015] border border-white/5 rounded-2xl overflow-hidden transition-all">
+            <motion.button 
+              onClick={() => handleClearData(MediaStatus.COMPLETED)}
+              type="button"
+              whileHover={{ scale: 1.002, backgroundColor: "rgba(239, 68, 68, 0.03)" }}
+              whileTap={{ scale: 0.998 }}
+              className="w-full flex items-center justify-between px-6 py-4 border-b border-white/[0.04] text-[#ff7171] hover:text-[#ff9494] text-left transition-all focus:outline-none"
+            >
+              <div className="flex flex-col items-start pr-4">
+                <span className="text-sm font-medium">Clear Tracker History</span>
+                <span className="text-[10px] text-red-400/60 uppercase tracking-widest mt-0.5">Permanent purge completed items</span>
+              </div>
+              <Trash2 size={15} className="text-red-500/40" />
+            </motion.button>
 
-          <button 
-            onClick={() => handleClearData(MediaStatus.PLANNED)}
-            type="button"
-            className="w-full flex items-center justify-between py-4 border-b border-white/[0.04] text-red-400 hover:text-red-300 transition-colors"
-          >
-            <div className="flex flex-col items-start pr-4">
-              <span className="text-sm font-medium">Clear Backlog</span>
-              <span className="text-[10px] text-red-400/60 uppercase tracking-widest mt-0.5">Permanent purge current planned queue</span>
-            </div>
-            <Trash2 size={15} className="text-red-500/40" />
-          </button>
+            <motion.button 
+              onClick={() => handleClearData(MediaStatus.PLANNED)}
+              type="button"
+              whileHover={{ scale: 1.002, backgroundColor: "rgba(239, 68, 68, 0.03)" }}
+              whileTap={{ scale: 0.998 }}
+              className="w-full flex items-center justify-between px-6 py-4 text-[#ff7171] hover:text-[#ff9494] text-left transition-all focus:outline-none"
+            >
+              <div className="flex flex-col items-start pr-4">
+                <span className="text-sm font-medium">Clear Backlog</span>
+                <span className="text-[10px] text-red-400/60 uppercase tracking-widest mt-0.5">Permanent purge current planned queue</span>
+              </div>
+              <Trash2 size={15} className="text-red-500/40" />
+            </motion.button>
+          </div>
+
         </div>
       </div>
 
       {/* 4. Infrastructure & Privacy Details */}
       <div className="my-16">
-        <div className="flex items-center gap-3 mb-4">
-          <Shield size={16} className="text-[#576d87]" />
-          <h2 className="text-sm font-bold text-white uppercase tracking-widest leading-none">Access Control</h2>
+        <div className="flex justify-between items-center border-b border-[#576d87]/10 pb-2 mb-4 font-sans">
+          <span className="text-[10px] uppercase tracking-widest font-bold text-white">Access Control</span>
         </div>
         <p className="text-xs text-[#576d87] leading-relaxed">
           Your credentials and tracked parameters are kept fully private. Database sync is isolated on authenticated security parameters within Supabase cloud layers.
@@ -644,7 +679,7 @@ export const Settings: React.FC<SettingsProps> = ({
 
       {/* 5. Sign Out Session Button */}
       <div className="pt-8">
-        <button 
+        <motion.button 
           onClick={async () => {
             try {
               if (supabase?.auth) {
@@ -667,11 +702,13 @@ export const Settings: React.FC<SettingsProps> = ({
             // Force reload to completely reset all React app states and show the Auth screen
             window.location.reload();
           }}
-          className="w-full flex items-center justify-center gap-2 py-4 bg-red-500/10 border border-red-500/20 rounded-2xl hover:bg-red-500/20 transition-all text-red-400 font-bold uppercase tracking-widest text-[10px]"
+          whileHover={{ scale: 1.01, backgroundColor: "rgba(239, 68, 68, 0.15)" }}
+          whileTap={{ scale: 0.99 }}
+          className="w-full flex items-center justify-center gap-2 py-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 font-bold uppercase tracking-widest text-[10px] transition-all focus:outline-none"
         >
           <LogOut size={16} />
           Sign Out of Account
-        </button>
+        </motion.button>
       </div>
 
       {/* Minimalist context menu modal for friend management */}

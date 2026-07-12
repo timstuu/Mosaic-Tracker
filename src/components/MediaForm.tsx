@@ -72,8 +72,7 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
       try {
         const details = await fetchTVShowDetails(suggestion.rawData.id);
         if (details) {
-          setTotalSeasons(details.totalSeasons);
-          setTotalEpisodes(details.totalEpisodes);
+          // No auto completion of episodes or total seasons to preserve manual input per season
           if (details.imageUrl) {
             setImageUrl(details.imageUrl);
           }
@@ -111,9 +110,28 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
       }
     }
 
+    // Automated transition for shows
+    let finalEndDate = endDate;
+    if (type === MediaType.SHOW && totalEpisodes > 0 && currentEpisode >= totalEpisodes) {
+      if (derivedStatus !== MediaStatus.DNF) {
+        derivedStatus = MediaStatus.COMPLETED;
+        if (!finalEndDate) {
+          finalEndDate = new Date().toISOString().split('T')[0];
+        }
+      }
+    }
+
+    let savedTitle = title;
+    if (type === MediaType.SHOW && currentSeason) {
+      const seasonSuffix = ` - Season ${currentSeason}`;
+      if (!savedTitle.endsWith(seasonSuffix) && !savedTitle.includes(`Season ${currentSeason}`)) {
+        savedTitle = `${savedTitle}${seasonSuffix}`;
+      }
+    }
+
     const newItem: Partial<MediaItem> = {
       id: crypto.randomUUID(),
-      title,
+      title: savedTitle,
       type,
       status: derivedStatus,
       rating,
@@ -121,12 +139,12 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
       notes,
       watchDate: isVisualMedia ? (watchDate || undefined) : undefined,
       startDate: isInteractiveMedia ? (startDate || undefined) : undefined,
-      endDate: isInteractiveMedia ? (endDate || undefined) : undefined,
+      endDate: isInteractiveMedia ? (finalEndDate || undefined) : undefined,
       platform: [MediaType.MOVIE, MediaType.SHOW, MediaType.DOCUMENTARY].includes(type) ? (platform || undefined) : undefined,
       console: type === MediaType.GAME ? (consoleName || undefined) : undefined,
       currentSeason: type === MediaType.SHOW ? currentSeason : undefined,
       currentEpisode: type === MediaType.SHOW ? currentEpisode : undefined,
-      totalSeasons: type === MediaType.SHOW ? totalSeasons : undefined,
+      totalSeasons: type === MediaType.SHOW ? 1 : undefined,
       totalEpisodes: type === MediaType.SHOW ? totalEpisodes : undefined,
       imageUrl: imageUrl || undefined,
       isbn: type === MediaType.BOOK ? isbn : undefined,
@@ -418,36 +436,57 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
                       </button>
                     </div>
 
-                    {type === MediaType.SHOW && startDate && !endDate && (
-                      <div className="pt-3 pb-2 px-4 bg-app-bg/50 border border-white/5 rounded-xl space-y-1.5">
-                        <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest">
-                          Show Progress (Watching)
+                    {type === MediaType.SHOW && (
+                      <div className="pt-4 pb-3 px-4 bg-app-bg/50 border border-white/5 rounded-2xl space-y-3">
+                        <label className="block text-[10px] font-bold text-[#576d87] uppercase tracking-widest">
+                          TV Show Tracking
                         </label>
-                        <div className="flex items-center gap-1.5 text-sm text-zinc-300">
-                          <span className="text-[11px] text-[#576d87] font-semibold uppercase tracking-wider">Season</span>
-                          <input
-                            type="number"
-                            min={1}
-                            max={totalSeasons || 50}
-                            value={currentSeason}
-                            onChange={(e) => setCurrentSeason(Math.max(1, parseInt(e.target.value) || 1))}
-                            className="w-10 bg-transparent text-center border-b border-transparent hover:border-white/20 focus:border-primary-accent focus:outline-none text-white font-mono text-xs py-0.5"
-                          />
-                          <span className="text-[#576d87]/30 text-xs">/</span>
-                          <span className="text-zinc-400 font-mono text-xs w-4">{totalSeasons || 1}</span>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1.5">
+                            <label className="block text-[9px] font-bold text-zinc-400 uppercase tracking-widest">
+                              Season Watched
+                            </label>
+                            <input
+                              type="number"
+                              min={1}
+                              value={currentSeason}
+                              onChange={(e) => setCurrentSeason(Math.max(1, parseInt(e.target.value) || 1))}
+                              className="w-full bg-app-bg border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-primary-accent/50 text-center font-mono text-xs"
+                              placeholder="e.g. 1, 2..."
+                            />
+                          </div>
                           
-                          <span className="text-[11px] text-[#576d87] font-semibold uppercase tracking-wider ml-3">Episode</span>
-                          <input
-                            type="number"
-                            min={0}
-                            max={totalEpisodes || 1000}
-                            value={currentEpisode}
-                            onChange={(e) => setCurrentEpisode(Math.max(0, parseInt(e.target.value) || 0))}
-                            className="w-12 bg-transparent text-center border-b border-transparent hover:border-white/20 focus:border-primary-accent focus:outline-none text-white font-mono text-xs py-0.5"
-                          />
-                          <span className="text-[#576d87]/30 text-xs">/</span>
-                          <span className="text-zinc-400 font-mono text-xs">{totalEpisodes || 'N/A'} Episodes</span>
+                          <div className="space-y-1.5">
+                            <label className="block text-[9px] font-bold text-zinc-400 uppercase tracking-widest">
+                              Episodes in Season
+                            </label>
+                            <input
+                              type="number"
+                              min={1}
+                              value={totalEpisodes || ''}
+                              onChange={(e) => setTotalEpisodes(Math.max(0, parseInt(e.target.value) || 0))}
+                              className="w-full bg-app-bg border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-primary-accent/50 text-center font-mono text-xs"
+                              placeholder="e.g. 10, 24..."
+                            />
+                          </div>
                         </div>
+
+                        {startDate && !endDate && (
+                          <div className="space-y-1.5 pt-1">
+                            <label className="block text-[9px] font-bold text-zinc-400 uppercase tracking-widest">
+                              Current Episode Watched
+                            </label>
+                            <input
+                              type="number"
+                              min={0}
+                              max={totalEpisodes || 1000}
+                              value={currentEpisode}
+                              onChange={(e) => setCurrentEpisode(Math.max(0, parseInt(e.target.value) || 0))}
+                              className="w-full bg-app-bg border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-primary-accent/50 text-center font-mono text-xs"
+                              placeholder="Current episode number"
+                            />
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

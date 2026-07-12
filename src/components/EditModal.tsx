@@ -24,9 +24,10 @@ interface EditModalProps {
   onSave: (item: Partial<MediaItem>) => void;
   onDelete: (id: string) => void;
   onAddToBacklog?: (item: { title: string; type: MediaType; imageUrl?: string }) => void;
+  onTagClick?: (tag: string) => void;
 }
 
-export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onDelete, onAddToBacklog }) => {
+export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onDelete, onAddToBacklog, onTagClick }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [type, setType] = useState<MediaType>(item.type);
   const [title, setTitle] = useState(item.title);
@@ -44,13 +45,16 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
 
   const [addedIds, setAddedIds] = useState<number[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [summaryAdded, setSummaryAdded] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleGetSummary = async () => {
     setIsAnalyzing(true);
     setErrorMsg(null);
     try {
-      const response = await fetch('/api/gemini/synopsis', {
+      // Prepend BASE_URL to support subpath proxy routing on mobile & external clients
+      const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, '');
+      const response = await fetch(`${baseUrl}/api/gemini/synopsis`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -70,16 +74,53 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
       const newSynopsis = data.synopsis;
 
       if (newSynopsis) {
-        setNotes(newSynopsis);
+        // Parse the synopsis to extract genres and actual summary
+        const parsed = parseNotes(newSynopsis);
+        let genresList: string[] = [];
+        let summaryText = newSynopsis;
 
+        if (parsed) {
+          genresList = parsed.genres;
+          summaryText = parsed.summary;
+        }
+
+        // 1. Merge genres into tags if any found
+        let updatedTags = tags;
+        if (genresList.length > 0) {
+          const existingTagsList = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+          const mergedTagsList = [...existingTagsList];
+          genresList.forEach(genre => {
+            if (!mergedTagsList.some(t => t.toLowerCase() === genre.toLowerCase())) {
+              mergedTagsList.push(genre);
+            }
+          });
+          updatedTags = mergedTagsList.join(', ');
+          setTags(updatedTags);
+        }
+
+        // 2. Format the notes with the summary appended or set
+        let updatedNotes = notes;
+        const summarySnippet = `Summary:\n${summaryText}`;
+        if (notes && notes.trim().length > 0) {
+          updatedNotes = `${notes.trim()}\n\n${summarySnippet}`;
+        } else {
+          updatedNotes = summarySnippet;
+        }
+        setNotes(updatedNotes);
+        setSummaryAdded(true);
+
+        // 3. Update Supabase
         if (item.id) {
           const { error: dbError } = await supabase
             .from('media_items')
-            .update({ notes: newSynopsis })
+            .update({ 
+              notes: updatedNotes,
+              tags: updatedTags
+            })
             .eq('id', item.id);
 
           if (dbError) {
-            console.error('Failed to update Supabase notes with synopsis:', dbError);
+            console.error('Failed to update Supabase notes and tags with synopsis:', dbError);
             setErrorMsg('Synced locally, but database save failed.');
           }
         }
@@ -170,11 +211,22 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
       }
     }
 
+    let finalEndDate = endDate;
+    let finalStatus = derivedStatus;
+    if (type === MediaType.SHOW && totalEpisodes > 0 && currentEpisode >= totalEpisodes) {
+      if (finalStatus !== MediaStatus.DNF) {
+        finalStatus = MediaStatus.COMPLETED;
+        if (!finalEndDate) {
+          finalEndDate = new Date().toISOString().split('T')[0];
+        }
+      }
+    }
+
     const updatedItem: Partial<MediaItem> = {
       ...item,
       title,
       type,
-      status: derivedStatus,
+      status: finalStatus,
       rating,
       notes,
       tags,
@@ -183,12 +235,12 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
       isbn: type === MediaType.BOOK ? isbn : undefined,
       watchDate: [MediaType.MOVIE, MediaType.DOCUMENTARY].includes(type) ? (watchDate || undefined) : undefined,
       startDate: [MediaType.BOOK, MediaType.GAME, MediaType.SHOW].includes(type) ? (startDate || undefined) : undefined,
-      endDate: [MediaType.BOOK, MediaType.GAME, MediaType.SHOW].includes(type) ? (endDate || undefined) : undefined,
+      endDate: [MediaType.BOOK, MediaType.GAME, MediaType.SHOW].includes(type) ? (finalEndDate || undefined) : undefined,
       platform: [MediaType.MOVIE, MediaType.SHOW, MediaType.DOCUMENTARY].includes(type) ? platform : undefined,
       console: type === MediaType.GAME ? consoleName : undefined,
       currentSeason: type === MediaType.SHOW ? currentSeason : undefined,
       currentEpisode: type === MediaType.SHOW ? currentEpisode : undefined,
-      totalSeasons: type === MediaType.SHOW ? totalSeasons : undefined,
+      totalSeasons: type === MediaType.SHOW ? 1 : undefined,
       totalEpisodes: type === MediaType.SHOW ? totalEpisodes : undefined,
     };
     onSave(updatedItem);
@@ -216,10 +268,35 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
           </div>
 
           <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
-            {/* Visual Header Grid: Cover Image on Left, Details on Right */}
-            <div className="flex flex-col sm:flex-row gap-6">
+            {/* Title & Banners (Always at the top) */}
+            <div className="space-y-3">
+              <h1 className="text-2xl font-bold text-white leading-tight font-sans">
+                {title}
+              </h1>
+              
+              {/* Category and Status Badge */}
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <span className="px-2.5 py-0.5 bg-white/5 border border-white/10 rounded-full text-[9px] font-bold text-zinc-400 uppercase tracking-widest">
+                  {type}
+                </span>
+                <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest border ${
+                  derivedStatus === MediaStatus.COMPLETED 
+                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+                    : derivedStatus === MediaStatus.ACTIVE
+                    ? 'bg-blue-500/10 border-blue-500/20 text-blue-400'
+                    : derivedStatus === MediaStatus.DNF
+                    ? 'bg-red-500/10 border-red-500/20 text-red-400'
+                    : 'bg-zinc-500/10 border-zinc-500/20 text-zinc-400'
+                }`}>
+                  {derivedStatus}
+                </span>
+              </div>
+            </div>
+
+            {/* Vertical Stack: Cover, Rating, and All Fields aligned with the same width */}
+            <div className="w-full max-w-xs mx-auto space-y-6">
               {/* Cover Art */}
-              <div className="w-full sm:w-[150px] aspect-[2/3] shrink-0 rounded-2xl overflow-hidden shadow-lg border border-white/10 bg-zinc-900/50 flex items-center justify-center relative">
+              <div className="w-full aspect-[2/3] rounded-2xl overflow-hidden shadow-lg border border-white/10 bg-zinc-900/50 flex items-center justify-center relative">
                 {item.imageUrl ? (
                   <img 
                     src={item.imageUrl} 
@@ -229,9 +306,9 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                   />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center text-zinc-500 bg-gradient-to-br from-white/5 to-white/[0.02]">
-                    {type === MediaType.MOVIE || type === MediaType.DOCUMENTARY ? <Film size={36} /> : 
-                     type === MediaType.SHOW ? <Tv size={36} /> :
-                     type === MediaType.BOOK ? <Book size={36} /> : <Gamepad2 size={36} />}
+                    {type === MediaType.MOVIE || type === MediaType.DOCUMENTARY ? <Film size={48} /> : 
+                     type === MediaType.SHOW ? <Tv size={48} /> :
+                     type === MediaType.BOOK ? <Book size={48} /> : <Gamepad2 size={48} />}
                   </div>
                 )}
                 {derivedStatus === MediaStatus.DNF && (
@@ -241,201 +318,276 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                 )}
               </div>
 
-              {/* Title and Key Details */}
-              <div className="flex-1 space-y-4">
-                <div className="space-y-1.5">
-                  <h1 className="text-2xl font-bold text-white leading-tight font-sans">
-                    {title}
-                  </h1>
-                  
-                  {/* Category and Status Badge */}
-                  <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <span className="px-2.5 py-0.5 bg-white/5 border border-white/10 rounded-full text-[9px] font-bold text-zinc-400 uppercase tracking-widest">
-                      {type}
-                    </span>
-                    <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest border ${
-                      derivedStatus === MediaStatus.COMPLETED 
-                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
-                        : derivedStatus === MediaStatus.ACTIVE
-                        ? 'bg-blue-500/10 border-blue-500/20 text-blue-400'
-                        : derivedStatus === MediaStatus.DNF
-                        ? 'bg-red-500/10 border-red-500/20 text-red-400'
-                        : 'bg-zinc-500/10 border-zinc-500/20 text-zinc-400'
-                    }`}>
-                      {derivedStatus}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Rating */}
-                <div className="space-y-1">
-                  <span className="block text-[10px] font-bold text-[#576d87] uppercase tracking-widest">Rating</span>
-                  <div className="flex items-center gap-0.5">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <Star 
-                        key={s} 
-                        size={18} 
-                        className={`${s <= rating ? 'fill-primary-accent text-primary-accent' : 'text-white/10'}`} 
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                {/* Custom Fields depending on type */}
-                <div className="grid grid-cols-2 gap-4 text-xs pt-1 border-t border-white/[0.03]">
-                  {platform && (
-                    <div>
-                      <span className="block text-[9px] font-bold text-[#576d87] uppercase tracking-widest">Platform</span>
-                      <span className="text-zinc-200 font-medium">{platform}</span>
-                    </div>
-                  )}
-                  {consoleName && (
-                    <div>
-                      <span className="block text-[9px] font-bold text-[#576d87] uppercase tracking-widest">Console</span>
-                      <span className="text-zinc-200 font-medium">{consoleName}</span>
-                    </div>
-                  )}
-                  {isbn && (
-                    <div>
-                      <span className="block text-[9px] font-bold text-[#576d87] uppercase tracking-widest">ISBN</span>
-                      <span className="text-zinc-200 font-mono">{isbn}</span>
-                    </div>
-                  )}
-                  <div>
-                    <span className="block text-[9px] font-bold text-[#576d87] uppercase tracking-widest">Added</span>
-                    <span className="text-zinc-200 font-mono">
-                      {item.dateAdded ? new Date(item.dateAdded).toLocaleDateString() : 'N/A'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* AI Synopsis Trigger */}
-            <div className="flex flex-col gap-1.5 pt-1">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleGetSummary}
-                  disabled={isAnalyzing}
-                  className="text-xs font-medium text-[#576d87] hover:text-[#e7e7e7] transition-colors bg-transparent border-none p-0 cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
-                >
-                  <Sparkles size={12} className={isAnalyzing ? "animate-pulse" : ""} />
-                  {isAnalyzing ? "Analyzing..." : "Get summary"}
-                </button>
-              </div>
-              {errorMsg && (
-                <span className="text-[10px] text-red-400 font-medium">
-                  {errorMsg}
-                </span>
-              )}
-            </div>
-
-            {/* Dates Grid */}
-            {(watchDate || startDate || endDate) && (
-              <div className="bg-[#242d3a]/30 border border-white/5 rounded-2xl p-4 grid grid-cols-2 gap-4 text-xs">
-                {watchDate && (
-                  <div className="col-span-2">
-                    <span className="block text-[9.5px] font-bold text-[#576d87] uppercase tracking-widest mb-0.5">Watched On</span>
-                    <span className="text-zinc-200 font-mono">{new Date(watchDate).toLocaleDateString()}</span>
-                  </div>
-                )}
-                {startDate && (
-                  <div>
-                    <span className="block text-[9.5px] font-bold text-[#576d87] uppercase tracking-widest mb-0.5">Started On</span>
-                    <span className="text-zinc-200 font-mono">{new Date(startDate).toLocaleDateString()}</span>
-                  </div>
-                )}
-                {endDate && (
-                  <div>
-                    <span className="block text-[9.5px] font-bold text-[#576d87] uppercase tracking-widest mb-0.5">Ended On</span>
-                    <span className="text-zinc-200 font-mono">{new Date(endDate).toLocaleDateString()}</span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* TV Show Progress Tracker */}
-            {type === MediaType.SHOW && (
-              <div className="bg-[#242d3a]/50 border border-white/5 rounded-2xl p-4 space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] font-bold text-[#576d87] uppercase tracking-widest">
-                    Show Progress
-                  </span>
-                  <span className="text-[10px] font-mono text-zinc-400">
-                    Season {currentSeason} / {totalSeasons || 1} • Episode {currentEpisode}
-                    {totalEpisodes > 0 ? ` / ${totalEpisodes}` : ''}
-                  </span>
-                </div>
-                
-                {/* Visual Progress Bar */}
-                {totalEpisodes > 0 && (
-                  <div className="space-y-1">
-                    <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
-                      <div 
-                        className="bg-emerald-400 h-full rounded-full transition-all duration-500" 
-                        style={{ width: `${Math.min(100, Math.round((currentEpisode / totalEpisodes) * 100))}%` }}
-                      />
-                    </div>
-                    <div className="flex justify-between text-[9px] text-[#576d87] font-mono">
-                      <span>{Math.round((currentEpisode / totalEpisodes) * 100)}% Complete</span>
-                      <span>{totalSeasons} Seasons Total</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Personal Notes */}
-            {notes && (() => {
-              const parsed = parseNotes(notes);
-              if (parsed) {
-                return (
-                  <div className="space-y-4">
-                    <div className="space-y-1">
-                      <span className="block text-[10px] font-bold text-[#576d87] uppercase tracking-widest">Genres</span>
-                      <div className="flex flex-wrap gap-1.5 pt-0.5">
-                        {parsed.genres.map((genre, idx) => (
-                          <span key={idx} className="px-2.5 py-0.5 bg-white/5 border border-white/10 rounded-full text-[9px] font-bold text-primary-accent uppercase tracking-widest">
-                            {genre}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="space-y-1.5">
-                      <span className="block text-[10px] font-bold text-[#576d87] uppercase tracking-widest">Synopsis</span>
-                      <blockquote className="bg-app-bg border-l-2 border-primary-accent/40 rounded-r-xl p-4 text-xs text-zinc-300 italic whitespace-pre-wrap leading-relaxed">
-                        "{parsed.summary}"
-                      </blockquote>
-                    </div>
-                  </div>
-                );
-              }
-              return (
-                <div className="space-y-1.5">
-                  <span className="block text-[10px] font-bold text-[#576d87] uppercase tracking-widest">Personal Notes</span>
-                  <blockquote className="bg-app-bg border-l-2 border-primary-accent/40 rounded-r-xl p-4 text-xs text-zinc-300 italic whitespace-pre-wrap leading-relaxed">
-                    "{notes}"
-                  </blockquote>
-                </div>
-              );
-            })()}
-
-            {/* Tags */}
-            {tags && (
-              <div className="space-y-2">
-                <span className="block text-[10px] font-bold text-[#576d87] uppercase tracking-widest">Tags</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {tags.split(',').map((tag, i) => (
-                    <span 
-                      key={i} 
-                      className="px-2.5 py-0.5 bg-[#576d87]/10 border border-[#576d87]/20 rounded-full text-[9px] font-bold text-[#576d87] uppercase tracking-widest"
-                    >
-                      {tag.trim()}
-                    </span>
+              {/* Rating (same width as cover, bigger) */}
+              <div className="space-y-1.5 w-full">
+                <span className="block text-[10px] font-bold text-[#576d87] uppercase tracking-widest">Rating</span>
+                <div className="flex justify-between items-center w-full gap-1">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Star 
+                      key={s} 
+                      size={36} 
+                      className={`flex-1 max-w-[48px] aspect-square transition-colors ${s <= rating ? 'fill-primary-accent text-primary-accent' : 'text-white/10'}`} 
+                    />
                   ))}
                 </div>
               </div>
-            )}
+
+              {/* Custom Metadata Fields depending on media type */}
+              {type === MediaType.MOVIE && (
+                <div className="bg-[#242d3a]/30 border border-white/5 rounded-2xl p-4 space-y-4 text-xs w-full">
+                  <div>
+                    <span className="block text-[9px] font-bold text-[#576d87] uppercase tracking-widest">Platform</span>
+                    <span className="text-zinc-200 font-medium block mt-0.5">{platform || "No platform specified"}</span>
+                  </div>
+                  <div>
+                    <span className="block text-[9px] font-bold text-[#576d87] uppercase tracking-widest">Link</span>
+                    {link ? (
+                      <a href={link} target="_blank" rel="noopener noreferrer" className="text-primary-accent hover:underline break-all block mt-0.5">
+                        {link}
+                      </a>
+                    ) : (
+                      <span className="text-zinc-500 italic block mt-0.5">No link added</span>
+                    )}
+                  </div>
+                  <div>
+                    <span className="block text-[9px] font-bold text-[#576d87] uppercase tracking-widest">Added</span>
+                    <span className="text-zinc-200 font-mono block mt-0.5">
+                      {item.dateAdded ? new Date(item.dateAdded).toLocaleDateString() : 'No date added'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block text-[9.5px] font-bold text-[#576d87] uppercase tracking-widest">Watched On</span>
+                    <span className="text-zinc-200 font-mono block mt-0.5">
+                      {watchDate ? new Date(watchDate).toLocaleDateString() : "Not watched yet"}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {type === MediaType.SHOW && (
+                <>
+                  <div className="bg-[#242d3a]/30 border border-white/5 rounded-2xl p-4 space-y-4 text-xs w-full">
+                    <div>
+                      <span className="block text-[9px] font-bold text-[#576d87] uppercase tracking-widest">Platform</span>
+                      <span className="text-zinc-200 font-medium block mt-0.5">{platform || "No platform specified"}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[9px] font-bold text-[#576d87] uppercase tracking-widest">Link</span>
+                      {link ? (
+                        <a href={link} target="_blank" rel="noopener noreferrer" className="text-primary-accent hover:underline break-all block mt-0.5">
+                          {link}
+                        </a>
+                      ) : (
+                        <span className="text-zinc-500 italic block mt-0.5">No link added</span>
+                      )}
+                    </div>
+                    <div>
+                      <span className="block text-[9px] font-bold text-[#576d87] uppercase tracking-widest">Added</span>
+                      <span className="text-zinc-200 font-mono block mt-0.5">
+                        {item.dateAdded ? new Date(item.dateAdded).toLocaleDateString() : 'No date added'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="block text-[9.5px] font-bold text-[#576d87] uppercase tracking-widest">Started On</span>
+                      <span className="text-zinc-200 font-mono block mt-0.5">
+                        {startDate ? new Date(startDate).toLocaleDateString() : "Not started yet"}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="block text-[9.5px] font-bold text-[#576d87] uppercase tracking-widest">Ended On</span>
+                      <span className="text-zinc-200 font-mono block mt-0.5">
+                        {endDate ? new Date(endDate).toLocaleDateString() : "Not finished yet"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* TV Show Progress Tracker */}
+                  <div className="bg-[#242d3a]/50 border border-white/5 rounded-2xl p-4 space-y-3 w-full">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-bold text-[#576d87] uppercase tracking-widest">
+                        Show Progress
+                      </span>
+                      <span className="text-[10px] font-mono text-zinc-400">
+                        Season {currentSeason} • Episode {currentEpisode}
+                        {totalEpisodes > 0 ? ` / ${totalEpisodes}` : ''}
+                      </span>
+                    </div>
+                    
+                    {/* Visual Progress Bar */}
+                    {totalEpisodes > 0 && (
+                      <div className="space-y-1">
+                        <div className="w-full bg-white/5 rounded-full h-1.5 overflow-hidden">
+                          <div 
+                            className="bg-emerald-400 h-full rounded-full transition-all duration-500" 
+                            style={{ width: `${Math.min(100, Math.round((currentEpisode / totalEpisodes) * 100))}%` }}
+                          />
+                        </div>
+                        <div className="flex justify-between text-[9px] text-[#576d87] font-mono">
+                          <span>{Math.round((currentEpisode / totalEpisodes) * 100)}% Complete</span>
+                          <span>{totalEpisodes} Episodes Total</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+
+              {type === MediaType.DOCUMENTARY && (
+                <div className="bg-[#242d3a]/30 border border-white/5 rounded-2xl p-4 space-y-4 text-xs w-full">
+                  <div>
+                    <span className="block text-[9px] font-bold text-[#576d87] uppercase tracking-widest">Platform</span>
+                    <span className="text-zinc-200 font-medium block mt-0.5">{platform || "No platform specified"}</span>
+                  </div>
+                  <div>
+                    <span className="block text-[9px] font-bold text-[#576d87] uppercase tracking-widest">Link</span>
+                    {link ? (
+                      <a href={link} target="_blank" rel="noopener noreferrer" className="text-primary-accent hover:underline break-all block mt-0.5">
+                        {link}
+                      </a>
+                    ) : (
+                      <span className="text-zinc-500 italic block mt-0.5">No link added</span>
+                    )}
+                  </div>
+                  <div>
+                    <span className="block text-[9px] font-bold text-[#576d87] uppercase tracking-widest">Added</span>
+                    <span className="text-zinc-200 font-mono block mt-0.5">
+                      {item.dateAdded ? new Date(item.dateAdded).toLocaleDateString() : 'No date added'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block text-[9.5px] font-bold text-[#576d87] uppercase tracking-widest">Watched On</span>
+                    <span className="text-zinc-200 font-mono block mt-0.5">
+                      {watchDate ? new Date(watchDate).toLocaleDateString() : "Not watched yet"}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {type === MediaType.BOOK && (
+                <div className="bg-[#242d3a]/30 border border-white/5 rounded-2xl p-4 space-y-4 text-xs w-full">
+                  <div>
+                    <span className="block text-[9px] font-bold text-[#576d87] uppercase tracking-widest">ISBN</span>
+                    <span className="text-zinc-200 font-mono block mt-0.5">{isbn || "No ISBN specified"}</span>
+                  </div>
+                  <div>
+                    <span className="block text-[9px] font-bold text-[#576d87] uppercase tracking-widest">Added</span>
+                    <span className="text-zinc-200 font-mono block mt-0.5">
+                      {item.dateAdded ? new Date(item.dateAdded).toLocaleDateString() : 'No date added'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block text-[9.5px] font-bold text-[#576d87] uppercase tracking-widest">Started On</span>
+                    <span className="text-zinc-200 font-mono block mt-0.5">
+                      {startDate ? new Date(startDate).toLocaleDateString() : "Not started yet"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block text-[9.5px] font-bold text-[#576d87] uppercase tracking-widest">Ended On</span>
+                    <span className="text-zinc-200 font-mono block mt-0.5">
+                      {endDate ? new Date(endDate).toLocaleDateString() : "Not finished yet"}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {type === MediaType.GAME && (
+                <div className="bg-[#242d3a]/30 border border-white/5 rounded-2xl p-4 space-y-4 text-xs w-full">
+                  <div>
+                    <span className="block text-[9px] font-bold text-[#576d87] uppercase tracking-widest">Console</span>
+                    <span className="text-zinc-200 font-medium block mt-0.5">{consoleName || "No console specified"}</span>
+                  </div>
+                  <div>
+                    <span className="block text-[9px] font-bold text-[#576d87] uppercase tracking-widest">Link</span>
+                    {link ? (
+                      <a href={link} target="_blank" rel="noopener noreferrer" className="text-primary-accent hover:underline break-all block mt-0.5">
+                        {link}
+                      </a>
+                    ) : (
+                      <span className="text-zinc-500 italic block mt-0.5">No link added</span>
+                    )}
+                  </div>
+                  <div>
+                    <span className="block text-[9px] font-bold text-[#576d87] uppercase tracking-widest">Added</span>
+                    <span className="text-zinc-200 font-mono block mt-0.5">
+                      {item.dateAdded ? new Date(item.dateAdded).toLocaleDateString() : 'No date added'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block text-[9.5px] font-bold text-[#576d87] uppercase tracking-widest">Started On</span>
+                    <span className="text-zinc-200 font-mono block mt-0.5">
+                      {startDate ? new Date(startDate).toLocaleDateString() : "Not started yet"}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block text-[9.5px] font-bold text-[#576d87] uppercase tracking-widest">Ended On</span>
+                    <span className="text-zinc-200 font-mono block mt-0.5">
+                      {endDate ? new Date(endDate).toLocaleDateString() : "Not finished yet"}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* AI Synopsis Trigger */}
+              <div className="flex flex-col gap-1.5 pt-1 w-full">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleGetSummary}
+                    disabled={isAnalyzing || summaryAdded}
+                    className="text-xs font-medium text-[#576d87] hover:text-[#e7e7e7] transition-colors bg-transparent border-none p-0 cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    <Sparkles size={12} className={isAnalyzing ? "animate-pulse" : ""} />
+                    {isAnalyzing ? "Analyzing..." : summaryAdded ? "Summary added to notes" : "Get summary"}
+                  </button>
+                </div>
+                {errorMsg && (
+                  <span className="text-[10px] text-red-400 font-medium">
+                    {errorMsg}
+                  </span>
+                )}
+              </div>
+
+              {/* Notes (Always show) */}
+              <div className="w-full">
+                <div className="space-y-1.5">
+                  <span className="block text-[10px] font-bold text-[#576d87] uppercase tracking-widest">Notes</span>
+                  {notes ? (
+                    <blockquote className="bg-app-bg border-l-2 border-primary-accent/40 rounded-r-xl p-4 text-xs text-zinc-300 italic whitespace-pre-wrap leading-relaxed">
+                      "{notes}"
+                    </blockquote>
+                  ) : (
+                    <div className="text-xs text-zinc-500 italic p-4 bg-app-bg rounded-xl border border-white/[0.03]">
+                      No notes added
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Tags (Always show) */}
+              <div className="space-y-2 w-full">
+                <span className="block text-[10px] font-bold text-[#576d87] uppercase tracking-widest">Tags</span>
+                {tags ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {tags.split(',').map((tag, i) => (
+                      <span 
+                        key={i} 
+                        onClick={() => {
+                          onTagClick?.(tag.trim());
+                          onClose();
+                        }}
+                        className="px-2.5 py-0.5 bg-[#576d87]/10 hover:bg-[#576d87]/25 border border-[#576d87]/20 hover:border-[#576d87]/45 rounded-full text-[9px] font-bold text-[#576d87] hover:text-[#e7e7e7] transition-all uppercase tracking-widest cursor-pointer"
+                      >
+                        {tag.trim()}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-xs text-zinc-500 italic p-4 bg-app-bg rounded-xl border border-white/[0.03]">
+                    No tags added
+                  </div>
+                )}
+              </div>
+            </div>
 
             {/* Similar Title Recommendations */}
             {['movie', 'show', 'documentary'].includes(type) && recommendations.length > 0 && (
@@ -520,30 +672,6 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
 
             {derivedStatus === MediaStatus.ACTIVE && (
               <>
-                {type === MediaType.SHOW && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const nextEpisode = (currentEpisode ?? 0) + 1;
-                      let newStatus: MediaStatus = derivedStatus;
-                      let finishedDate = endDate;
-                      if (totalEpisodes && nextEpisode >= totalEpisodes) {
-                        newStatus = MediaStatus.COMPLETED;
-                        finishedDate = new Date().toISOString().split('T')[0];
-                      }
-                      const updated: Partial<MediaItem> = {
-                        ...item,
-                        currentEpisode: nextEpisode,
-                        status: newStatus,
-                        endDate: finishedDate
-                      };
-                      onSave(updated);
-                    }}
-                    className="flex-1 px-4 py-3 bg-emerald-500/10 hover:bg-emerald-500 hover:text-app-bg text-emerald-400 border border-emerald-500/20 rounded-xl text-xs font-bold uppercase tracking-widest transition-all"
-                  >
-                    +1 Episode
-                  </button>
-                )}
                 <button
                   type="button"
                   onClick={() => {
@@ -832,61 +960,50 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                         <label className="block text-[10px] font-bold text-white uppercase tracking-widest">
                           Show Progress
                         </label>
-                        <div className="grid grid-cols-2 gap-4">
-                          {/* Season inputs */}
+                        <div className="grid grid-cols-3 gap-4">
+                          {/* Season Number */}
                           <div className="space-y-1.5">
                             <label className="block text-[9px] font-bold text-[#576d87] uppercase tracking-widest">
-                              Season Progress
+                              Season
                             </label>
-                            <div className="flex items-center gap-1 bg-app-bg border border-white/10 rounded-lg px-2 py-1">
-                              <input
-                                type="number"
-                                min={1}
-                                value={currentSeason}
-                                onChange={(e) => setCurrentSeason(Math.max(1, parseInt(e.target.value) || 1))}
-                                className="w-full bg-transparent text-center focus:outline-none text-white font-mono text-xs"
-                                placeholder="Current"
-                                title="Current Season"
-                              />
-                              <span className="text-zinc-600 text-xs">/</span>
-                              <input
-                                type="number"
-                                min={1}
-                                value={totalSeasons}
-                                onChange={(e) => setTotalSeasons(Math.max(1, parseInt(e.target.value) || 1))}
-                                className="w-full bg-transparent text-center focus:outline-none text-white font-mono text-xs"
-                                placeholder="Total"
-                                title="Total Seasons"
-                              />
-                            </div>
+                            <input
+                              type="number"
+                              min={1}
+                              value={currentSeason}
+                              onChange={(e) => setCurrentSeason(Math.max(1, parseInt(e.target.value) || 1))}
+                              className="w-full bg-app-bg border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-primary-accent/50 text-center font-mono text-xs"
+                              placeholder="Season"
+                            />
+                          </div>
+
+                          {/* Episode Watched */}
+                          <div className="space-y-1.5">
+                            <label className="block text-[9px] font-bold text-[#576d87] uppercase tracking-widest">
+                              Current Ep
+                            </label>
+                            <input
+                              type="number"
+                              min={0}
+                              value={currentEpisode}
+                              onChange={(e) => setCurrentEpisode(Math.max(0, parseInt(e.target.value) || 0))}
+                              className="w-full bg-app-bg border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-primary-accent/50 text-center font-mono text-xs"
+                              placeholder="Episode"
+                            />
                           </div>
                           
-                          {/* Episode inputs */}
+                          {/* Total Episodes in Season */}
                           <div className="space-y-1.5">
                             <label className="block text-[9px] font-bold text-[#576d87] uppercase tracking-widest">
-                              Episode Progress
+                              Total Eps
                             </label>
-                            <div className="flex items-center gap-1 bg-app-bg border border-white/10 rounded-lg px-2 py-1">
-                              <input
-                                type="number"
-                                min={0}
-                                value={currentEpisode}
-                                onChange={(e) => setCurrentEpisode(Math.max(0, parseInt(e.target.value) || 0))}
-                                className="w-full bg-transparent text-center focus:outline-none text-white font-mono text-xs"
-                                placeholder="Current"
-                                title="Current Episode"
-                              />
-                              <span className="text-zinc-600 text-xs">/</span>
-                              <input
-                                type="number"
-                                min={0}
-                                value={totalEpisodes}
-                                onChange={(e) => setTotalEpisodes(Math.max(0, parseInt(e.target.value) || 0))}
-                                className="w-full bg-transparent text-center focus:outline-none text-white font-mono text-xs"
-                                placeholder="Total"
-                                title="Total Episodes"
-                              />
-                            </div>
+                            <input
+                              type="number"
+                              min={0}
+                              value={totalEpisodes || ''}
+                              onChange={(e) => setTotalEpisodes(Math.max(0, parseInt(e.target.value) || 0))}
+                              className="w-full bg-app-bg border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-primary-accent/50 text-center font-mono text-xs"
+                              placeholder="Total"
+                            />
                           </div>
                         </div>
                       </div>

@@ -54,6 +54,12 @@ export default function App() {
   const [showAllCompleted, setShowAllCompleted] = useState(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
+  const handleTagClick = (tag: string) => {
+    setSearchQuery(tag);
+    setIsSearchVisible(true);
+    setEditingItem(null);
+  };
+
   const addToast = (message: string, type: 'success' | 'info' | 'warning' | 'error' = 'success') => {
     const id = Math.random().toString(36).substring(2, 9);
     setToasts((prev) => [...prev, { id, message, type }]);
@@ -132,7 +138,7 @@ export default function App() {
       // Exact user_id database filtering to drastically reduce DB load and ensure privacy
       const { data, error } = await supabase
         .from('media_items')
-        .select('id, user_id, title, type, status, rating, watchDate, endDate, dateAdded, imageUrl, tags, platform, console, notes')
+        .select('id, user_id, title, type, status, rating, watchDate, startDate, endDate, dateAdded, imageUrl, tags, platform, console, notes, link, isbn, current_season, current_episode, total_seasons, total_episodes')
         .eq('user_id', currentUserId);
       
       if (error) throw error;
@@ -615,6 +621,7 @@ const dateB = new Date(b.watchDate || b.endDate || b.dateAdded || 0).getTime() |
                 currentMonthYear={currentMonthYear}
                 date={date}
                 onEdit={setEditingItem}
+                onTagClick={handleTagClick}
               />
             );
           } catch (err) {
@@ -628,10 +635,10 @@ const dateB = new Date(b.watchDate || b.endDate || b.dateAdded || 0).getTime() |
 
   const renderSearchResults = () => {
     return (
-      <div className="max-w-4xl mx-auto px-4 pb-24">
-        <div className="mb-8">
-          <h1 className="text-3xl font-serif italic text-white mb-2">Search Results</h1>
-          <p className="text-zinc-300 text-sm">Found {filteredAndSortedItems.length} items matching "{searchQuery}"</p>
+      <div className="max-w-4xl mx-auto px-0 pb-24 font-sans select-none">
+        <div className="mb-8 animate-fadeIn">
+          <h1 className="text-2xl font-bold text-[#e7e7e7] mb-2 font-sans tracking-tight">Search Results</h1>
+          <p className="text-[#576d87] text-xs uppercase tracking-wider">Found {filteredAndSortedItems.length} items matching "{searchQuery}"</p>
         </div>
 
         <div className="flex justify-end mb-4">
@@ -692,7 +699,12 @@ const dateB = new Date(b.watchDate || b.endDate || b.dateAdded || 0).getTime() |
     const displayedCompleted = showAllCompleted ? completedItems : recentCompleted;
 
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto px-0 font-sans select-none">
+        <div className="mb-8 animate-fadeIn">
+          <h1 className="text-2xl font-bold text-[#e7e7e7] mb-2 font-sans tracking-tight">Tracker</h1>
+          <p className="text-[#576d87] text-xs uppercase tracking-wider">Track your active and completed media collections.</p>
+        </div>
+
         <ActiveMediaShelf 
           items={activeItems} 
           onItemClick={setEditingItem} 
@@ -1097,6 +1109,7 @@ const dateB = new Date(b.watchDate || b.endDate || b.dateAdded || 0).getTime() |
             onSave={handleUpdateMedia}
             onDelete={handleDeleteMedia}
             onAddToBacklog={handleAddToBacklog}
+            onTagClick={handleTagClick}
           />
         )}
       </AnimatePresence>

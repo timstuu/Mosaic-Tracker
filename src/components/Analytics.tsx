@@ -278,15 +278,17 @@ export const Analytics: React.FC<AnalyticsProps> = ({ items, challenges, onAddCh
 
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-xs font-bold text-white uppercase tracking-widest">Active Challenges</h3>
-          <button 
+        <div className="flex justify-between items-center border-b border-[#576d87]/10 pb-2 mb-6 font-sans">
+          <span className="text-[10px] uppercase tracking-widest font-bold text-white">Active Challenges</span>
+          <motion.button 
             onClick={onAddChallenge}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-accent text-app-bg rounded-xl text-xs font-bold hover:brightness-110 transition-all shadow-lg shadow-primary-accent/10"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="flex items-center gap-1.5 px-3 py-1 bg-white/5 hover:bg-white/10 rounded-full text-[10px] font-bold uppercase tracking-wider text-white transition-all focus:outline-none"
           >
-            <Plus size={14} />
+            <Plus size={10} />
             New Challenge
-          </button>
+          </motion.button>
         </div>
 
         {challengeStats.length === 0 ? (
@@ -368,10 +370,10 @@ export const Analytics: React.FC<AnalyticsProps> = ({ items, challenges, onAddCh
   };
 
   return (
-    <div className="space-y-16 pb-24">
+    <div className="max-w-4xl mx-auto px-0 pb-24 font-sans select-none animate-fadeIn space-y-16">
       <div className="mb-8">
-        <h1 className="text-3xl font-serif italic text-white mb-2">Analytics</h1>
-        <p className="text-white text-sm">Track your progress and media consumption trends.</p>
+        <h1 className="text-2xl font-bold text-[#e7e7e7] mb-2 font-sans tracking-tight">Analytics</h1>
+        <p className="text-[#576d87] text-xs uppercase tracking-wider">Track your progress and media consumption trends.</p>
       </div>
 
       {/* Challenges Section */}
@@ -381,9 +383,9 @@ export const Analytics: React.FC<AnalyticsProps> = ({ items, challenges, onAddCh
 
       {/* Overview Section */}
       <section className="space-y-8">
-        <div className="border-t border-white/5 pt-12 mb-8">
-          <h2 className="text-2xl font-serif italic text-white mb-2">Insights</h2>
-          <p className="text-white text-sm">A visual overview of your media consumption journey.</p>
+        <div className="border-t border-[#576d87]/10 pt-12 mb-8">
+          <h2 className="text-2xl font-bold text-[#e7e7e7] mb-2 font-sans tracking-tight">Insights</h2>
+          <p className="text-[#576d87] text-xs uppercase tracking-wider">A visual overview of your media consumption journey.</p>
         </div>
         {renderOverview()}
       </section>
@@ -406,8 +408,8 @@ export const Analytics: React.FC<AnalyticsProps> = ({ items, challenges, onAddCh
             >
               <div className="flex items-center justify-between p-6 border-b border-white/10 bg-secondary-accent/50">
                 <div>
-                  <h2 className="text-2xl font-serif italic text-white">{selectedChallenge.name}</h2>
-                  <p className="text-zinc-400 text-sm mt-1">
+                  <h2 className="text-2xl font-bold text-[#e7e7e7] font-sans tracking-tight">{selectedChallenge.name}</h2>
+                  <p className="text-[#576d87] text-xs mt-1">
                     {selectedChallenge.progressCount} / {selectedChallenge.targetCount} {selectedChallenge.mediaType}s completed
                   </p>
                 </div>

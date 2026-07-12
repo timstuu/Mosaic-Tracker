@@ -9,6 +9,7 @@ interface TrackerRowProps {
   currentMonthYear: string;
   date: Date;
   onEdit: (item: MediaItem) => void;
+  onTagClick?: (tag: string) => void;
 }
 
 export const TrackerRow: React.FC<TrackerRowProps> = ({
@@ -16,7 +17,8 @@ export const TrackerRow: React.FC<TrackerRowProps> = ({
   isFirstInMonth,
   currentMonthYear,
   date,
-  onEdit
+  onEdit,
+  onTagClick
 }) => {
   return (
     <>
@@ -93,7 +95,14 @@ export const TrackerRow: React.FC<TrackerRowProps> = ({
               {item.tags && (
                 <div className="flex flex-wrap gap-1">
                   {item.tags.split(',').map((tag, i) => (
-                    <span key={i} className="px-1.5 py-0.5 bg-[#576d87]/10 border border-[#576d87]/20 rounded text-[8px] font-bold text-[#576d87] uppercase tracking-widest">
+                    <span 
+                      key={i} 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onTagClick?.(tag.trim());
+                      }}
+                      className="px-1.5 py-0.5 bg-[#576d87]/10 hover:bg-[#576d87]/25 border border-[#576d87]/20 hover:border-[#576d87]/45 rounded text-[8px] font-bold text-[#576d87] hover:text-[#e7e7e7] transition-all uppercase tracking-widest cursor-pointer"
+                    >
                       {tag.trim()}
                     </span>
                   ))}
