@@ -20,7 +20,7 @@ const parseNotes = (text: string) => {
 };
 
 const generateSynopsisClientSide = async (title: string, type: string) => {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : undefined);
   if (!apiKey || apiKey === 'your-gemini-api-key') {
     throw new Error('No valid Gemini API key configured locally or on the server.');
   }
