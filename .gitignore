@@ -6,9 +6,4 @@ coverage/
 *.log
 .env*
 !.env.example
-# Schützt die PWA-Icons vor dem Überschreiben durch KI-Syncs
-public/apple-touch-icon.png
-public/favicon-16x16.png
-public/favicon-32x32.png
-public/icon-192.png
-public/icon-512.png
+
