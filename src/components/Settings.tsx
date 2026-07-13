@@ -718,11 +718,7 @@ export const Settings: React.FC<SettingsProps> = ({
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/[0.01] border border-white/5 rounded-2xl p-5">
           <div className="space-y-1">
-            <div className="text-xs font-semibold text-[#e7e7e7]">Version 1.0.0 (Build 2026.07.13)</div>
-            <div className="flex items-center gap-1.5 text-[10px] text-green-400 font-medium">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-              App is up to date
-            </div>
+            <div className="text-xs font-semibold text-[#e7e7e7]">Version 1.0.1</div>
           </div>
           <motion.button
             onClick={() => {
