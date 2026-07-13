@@ -117,11 +117,6 @@ export const Layout: React.FC<LayoutProps> = ({
           <div className="flex items-center gap-2 opacity-50 text-[#576d87]">
             <span className="text-[10px] font-mono uppercase tracking-widest">Mosaic Media Tracker</span>
           </div>
-          <div className="flex gap-8 text-[11px] font-bold uppercase tracking-wider text-[#576d87]">
-            <span className="hover:text-[#e7e7e7] cursor-pointer transition-colors">Privacy</span>
-            <span className="hover:text-[#e7e7e7] cursor-pointer transition-colors">Terms</span>
-            <span className="hover:text-[#e7e7e7] cursor-pointer transition-colors">API</span>
-          </div>
         </div>
       </footer>
     </div>

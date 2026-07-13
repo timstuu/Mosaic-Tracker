@@ -711,6 +711,33 @@ export const Settings: React.FC<SettingsProps> = ({
         </motion.button>
       </div>
 
+      {/* 6. Version Tracker Section */}
+      <div className="my-16 border-t border-[#576d87]/15 pt-12">
+        <div className="flex justify-between items-center border-b border-[#576d87]/10 pb-2 mb-4 font-sans">
+          <span className="text-[10px] uppercase tracking-widest font-bold text-white">App Version</span>
+        </div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/[0.01] border border-white/5 rounded-2xl p-5">
+          <div className="space-y-1">
+            <div className="text-xs font-semibold text-[#e7e7e7]">Version 1.0.0 (Build 2026.07.13)</div>
+            <div className="flex items-center gap-1.5 text-[10px] text-green-400 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+              App is up to date
+            </div>
+          </div>
+          <motion.button
+            onClick={() => {
+              // Reload page to trigger service worker updates / cache-busting
+              window.location.reload();
+            }}
+            whileHover={{ scale: 1.02, backgroundColor: "rgba(255, 255, 255, 0.08)" }}
+            whileTap={{ scale: 0.98 }}
+            className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white font-bold uppercase tracking-widest text-[9px] transition-all focus:outline-none self-start sm:self-center"
+          >
+            Check for updates
+          </motion.button>
+        </div>
+      </div>
+
       {/* Minimalist context menu modal for friend management */}
       <AnimatePresence>
         {isContextMenuOpen && currentFriend && (
