@@ -175,12 +175,6 @@ const ActiveCard: React.FC<{
         
         {/* Active status top badge & episode progress count */}
         <div className="absolute top-2 left-2 md:top-3 md:left-3 z-10 flex flex-col items-start gap-1">
-          <div className="bg-black/75 backdrop-blur-md px-2 py-0.5 md:px-2.5 md:py-1 rounded-full flex items-center gap-1 border border-white/10 shadow-sm shadow-black/20">
-            <span className="text-emerald-400 shrink-0">{getTypeIcon(item.type)}</span>
-            <span className="text-[8px] md:text-[9.5px] font-bold text-white uppercase tracking-wider">
-              {getTypeLabel(item.type)}
-            </span>
-          </div>
           {item.type === MediaType.SHOW && (
             <div className="bg-black/75 backdrop-blur-md px-2 py-0.5 md:px-2.5 md:py-1 rounded-full border border-white/10 text-[8px] sm:text-[9px] md:text-[9.5px] font-mono text-emerald-400 font-semibold tracking-tight shadow-sm shadow-black/20">
               {formatProgress(item)}
