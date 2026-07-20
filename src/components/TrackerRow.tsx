@@ -12,7 +12,9 @@ interface TrackerRowProps {
   onTagClick?: (tag: string) => void;
 }
 
-export const TrackerRow: React.FC<TrackerRowProps> = ({
+const browserDateFormatter = new Intl.DateTimeFormat();
+
+export const TrackerRow: React.FC<TrackerRowProps> = React.memo(({
   item,
   isFirstInMonth,
   currentMonthYear,
@@ -52,6 +54,8 @@ export const TrackerRow: React.FC<TrackerRowProps> = ({
               src={item.imageUrl} 
               alt={item.title} 
               referrerPolicy="no-referrer"
+              loading="lazy"
+              decoding="async"
               className="w-8 h-12 object-cover rounded shadow-lg shadow-black/40 border border-white/10"
             />
           ) : (
@@ -84,7 +88,7 @@ export const TrackerRow: React.FC<TrackerRowProps> = ({
             <div className="flex flex-wrap items-center gap-2">
               {(item.startDate && item.endDate) && (
                 <div className="text-[10px] text-white font-mono whitespace-nowrap">
-                  {new Date(item.startDate).toLocaleDateString()} – {new Date(item.endDate).toLocaleDateString()}
+                  {browserDateFormatter.format(new Date(item.startDate))} – {browserDateFormatter.format(new Date(item.endDate))}
                 </div>
               )}
               {(item.platform || item.console) && (
@@ -126,4 +130,4 @@ export const TrackerRow: React.FC<TrackerRowProps> = ({
       </motion.div>
     </>
   );
-};
+});

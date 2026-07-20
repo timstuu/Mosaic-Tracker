@@ -9,7 +9,9 @@ interface BacklogRowProps {
   onEdit?: (item: MediaItem) => void;
 }
 
-export const BacklogRow: React.FC<BacklogRowProps> = ({
+const browserDateFormatter = new Intl.DateTimeFormat();
+
+export const BacklogRow: React.FC<BacklogRowProps> = React.memo(({
   item,
   typeIcons,
   onMoveToTracker,
@@ -29,6 +31,8 @@ export const BacklogRow: React.FC<BacklogRowProps> = ({
             src={item.imageUrl} 
             alt={item.title} 
             referrerPolicy="no-referrer"
+            loading="lazy"
+            decoding="async"
             className="w-10 h-14 object-cover rounded shadow-lg border border-white/10"
           />
         ) : (
@@ -50,10 +54,10 @@ export const BacklogRow: React.FC<BacklogRowProps> = ({
             </span>
           )}
           <span className="text-[10px] text-zinc-600 font-mono">
-            Added {new Date(item.dateAdded).toLocaleDateString()}
+            Added {browserDateFormatter.format(new Date(item.dateAdded))}
           </span>
         </div>
       </div>
     </motion.div>
   );
-};
+});

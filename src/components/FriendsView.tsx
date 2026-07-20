@@ -26,7 +26,18 @@ interface FriendsViewProps {
   onAddToBacklog: (item: { title: string; type: MediaType; imageUrl?: string }) => Promise<void>;
 }
 
-export const FriendsView: React.FC<FriendsViewProps> = ({ session, onAddToBacklog }) => {
+const friendsFeedFormatter = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric'
+});
+
+const friendsMonthYearFormatter = new Intl.DateTimeFormat('en-US', {
+  month: 'long',
+  year: 'numeric'
+});
+
+export const FriendsView: React.FC<FriendsViewProps> = React.memo(({ session, onAddToBacklog }) => {
   const [feedItems, setFeedItems] = useState<FriendsFeedItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -142,7 +153,7 @@ export const FriendsView: React.FC<FriendsViewProps> = ({ session, onAddToBacklo
     if (isNaN(date.getTime())) {
       date = new Date();
     }
-    const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'numeric' }).toUpperCase();
+    const currentMonthYear = friendsMonthYearFormatter.format(date).toUpperCase();
     if (!acc[currentMonthYear]) {
       acc[currentMonthYear] = [];
     }
@@ -196,11 +207,7 @@ export const FriendsView: React.FC<FriendsViewProps> = ({ session, onAddToBacklo
     if (!dateStr) return '';
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return '';
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
-    });
+    return friendsFeedFormatter.format(date);
   };
 
   return (
@@ -285,6 +292,8 @@ export const FriendsView: React.FC<FriendsViewProps> = ({ session, onAddToBacklo
                       src={item.imageUrl}
                       alt={item.title}
                       referrerPolicy="no-referrer"
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                   ) : (
@@ -304,6 +313,8 @@ export const FriendsView: React.FC<FriendsViewProps> = ({ session, onAddToBacklo
                           src={item.profiles.avatar_url}
                           alt={item.profiles.username}
                           referrerPolicy="no-referrer"
+                          loading="lazy"
+                          decoding="async"
                           className="h-full w-full object-cover"
                         />
                       ) : (
@@ -433,4 +444,4 @@ export const FriendsView: React.FC<FriendsViewProps> = ({ session, onAddToBacklo
       </div>
     </div>
   );
-};
+});

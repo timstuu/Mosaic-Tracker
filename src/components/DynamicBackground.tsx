@@ -15,30 +15,6 @@ export const DynamicBackground: React.FC = () => {
   return (
     <>
       {/* 
-        High-performance SVG filter to generate fine-grained film texture.
-        sr-only and aria-hidden ensure screen readers and rendering ignores this container.
-      */}
-      <svg className="sr-only" aria-hidden="true">
-        <filter id="grainy-noise">
-          {/* 
-            feTurbulence generates a smooth, highly detailed fractal structure.
-            A fine grain frequency (0.65-0.80) with 3 octaves works best.
-          */}
-          <feTurbulence 
-            type="fractalNoise" 
-            baseFrequency="0.75" 
-            numOctaves="3" 
-            stitchTiles="stitch" 
-          />
-          {/* Subtle alpha/color correction to dial down contrast of the grain */}
-          <feColorMatrix 
-            type="matrix" 
-            values="0 0 0 0 0   0 0 0 0 0   0 0 0 0 0  0 0 0 0.12 0" 
-          />
-        </filter>
-      </svg>
-
-      {/* 
         The Fixed Infinite Canvas.
         A perfectly styled, dynamic canvas transitioning through the MOSAIC color palette:
         Deep Slate (#242d3a), Muted Blue (#576d87), and Off-White (#e7e7e7).
@@ -55,12 +31,14 @@ export const DynamicBackground: React.FC = () => {
       {/* 
         The Fine-Film Grain Overlay Layer.
         -z-40 overlay covers the background element, pointer-events-none lets mouse flows work, 
-        mix-blend-overlay creates premium grain integration.
+        mix-blend-overlay creates premium grain integration. Uses a static base64 PNG pattern
+        to avoid heavy SVG turbulence repaint lag.
       */}
       <div 
-        className="fixed inset-0 -z-40 pointer-events-none opacity-[0.16] will-change-transform mix-blend-overlay"
+        className="fixed inset-0 -z-40 pointer-events-none opacity-[0.14] mix-blend-overlay"
         style={{
-          filter: 'url(#grainy-noise)',
+          backgroundImage: `url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyBAMAAADt2YrJAAAAElBMVEUAAAD///////////8AAAD///+///+VAAAAAXRSTlMAQObYZgAAADRJREFUeF7tyrENACAMA8EM8v9Po2AD2UtVvBssA1D1a7g6fWqmq9OnZro6fWqmq9OnZro6fWp+YQWwA6Q2tAAAAABJRU5ErkJggg==")`,
+          backgroundRepeat: 'repeat',
         }}
       />
     </>

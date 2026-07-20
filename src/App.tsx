@@ -33,6 +33,8 @@ const springTransition = {
   mass: 1
 };
 
+const monthYearFormatter = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' });
+
 export default function App() {
   const [session, setSession] = useState<any>(null);
   const [activePage, setActivePage] = useState<Page>('tracker');
@@ -40,6 +42,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [newlyAddedItemId, setNewlyAddedItemId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchInputVal, setSearchInputVal] = useState('');
   const [isSearchVisible, setIsSearchVisible] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [importMode, setImportMode] = useState<'library' | 'watchlist'>('library');
@@ -55,6 +58,7 @@ export default function App() {
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
   const handleTagClick = (tag: string) => {
+    setSearchInputVal(tag);
     setSearchQuery(tag);
     setIsSearchVisible(true);
     setEditingItem(null);
@@ -91,9 +95,17 @@ export default function App() {
 
   useEffect(() => {
     setIsSearchVisible(false);
+    setSearchInputVal('');
     setSearchQuery('');
     setShowAllCompleted(false);
   }, [activePage]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(searchInputVal);
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [searchInputVal]);
 
   useEffect(() => {
     if (isSupabaseConfigured) {
@@ -608,7 +620,7 @@ const dateB = new Date(b.watchDate || b.endDate || b.dateAdded || 0).getTime() |
             if (isNaN(date.getTime())) {
               date = new Date(0);
             }
-            const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+            const currentMonthYear = monthYearFormatter.format(date);
                    
             const isFirstInMonth = currentMonthYear !== lastMonthYear;
             lastMonthYear = currentMonthYear;
@@ -1048,14 +1060,17 @@ const dateB = new Date(b.watchDate || b.endDate || b.dateAdded || 0).getTime() |
                 <input
                   autoFocus
                   type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={searchInputVal}
+                  onChange={(e) => setSearchInputVal(e.target.value)}
                   placeholder="Search your media library..."
                   className="w-full bg-[#242d3a] border border-[#576d87]/20 rounded-2xl pl-12 pr-12 py-4 text-[#e7e7e7] focus:outline-none focus:border-[#e7e7e7]/50 transition-all font-sans text-sm"
                 />
-                {searchQuery && (
+                {searchInputVal && (
                   <button 
-                    onClick={() => setSearchQuery('')}
+                    onClick={() => {
+                      setSearchInputVal('');
+                      setSearchQuery('');
+                    }}
                     className="absolute right-4 top-1/2 -translate-y-1/2 p-1 hover:bg-white/5 rounded-full text-zinc-400"
                     title="Clear search"
                   >

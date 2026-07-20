@@ -44,7 +44,7 @@ const ActiveCard: React.FC<{
   onItemClick: (item: MediaItem) => void;
   onIncrementEpisode?: (item: MediaItem) => void;
   onUpdateMedia?: (item: Partial<MediaItem>) => void;
-}> = ({ item, onItemClick, onIncrementEpisode, onUpdateMedia }) => {
+}> = React.memo(({ item, onItemClick, onIncrementEpisode, onUpdateMedia }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isPressing, setIsPressing] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -127,14 +127,10 @@ const ActiveCard: React.FC<{
     setMenuOpen(false);
   };
 
-  // Cancel long-press triggers when window scrolls
+  // Long-press cancelation is handled by pointer move detection in handlePointerMove,
+  // so no global window scroll event listener is needed.
   useEffect(() => {
-    const handleScroll = () => {
-      cancelPress();
-    };
-    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
-      window.removeEventListener('scroll', handleScroll);
       cancelPress();
     };
   }, []);
@@ -160,6 +156,8 @@ const ActiveCard: React.FC<{
           <img 
             src={item.imageUrl} 
             alt={item.title}
+            loading="lazy"
+            decoding="async"
             className="w-full h-full absolute inset-0 object-cover transition-transform duration-500 group-hover:scale-103"
             referrerPolicy="no-referrer"
             draggable="false"
@@ -263,9 +261,9 @@ const ActiveCard: React.FC<{
       </AnimatePresence>
     </>
   );
-};
+});
 
-export const ActiveMediaShelf: React.FC<ActiveMediaShelfProps> = ({ 
+export const ActiveMediaShelf: React.FC<ActiveMediaShelfProps> = React.memo(({ 
   items, 
   onItemClick, 
   onIncrementEpisode, 
@@ -296,4 +294,4 @@ export const ActiveMediaShelf: React.FC<ActiveMediaShelfProps> = ({
       </div>
     </div>
   );
-};
+});

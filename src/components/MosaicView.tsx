@@ -16,14 +16,16 @@ const springTransition = {
   mass: 1
 };
 
-export const MosaicView: React.FC<MosaicViewProps> = ({ items, onItemClick, newlyAddedItemId }) => {
+const monthYearFormatter = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' });
+
+export const MosaicView: React.FC<MosaicViewProps> = React.memo(({ items, onItemClick, newlyAddedItemId }) => {
   const groupedItems = items.reduce((acc, item) => {
     const rawDate = item.watchDate || item.endDate || item.dateAdded;
     let date = new Date(rawDate || 0);
     if (isNaN(date.getTime())) {
       date = new Date(0); // Sichert ab, falls das Datum komplett kaputt ist
     }
-    const currentMonthYear = date.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+    const currentMonthYear = monthYearFormatter.format(date);
     if (!acc[currentMonthYear]) {
       acc[currentMonthYear] = [];
     }
@@ -79,6 +81,8 @@ export const MosaicView: React.FC<MosaicViewProps> = ({ items, onItemClick, newl
                           src={item.imageUrl} 
                           alt={item.title} 
                           referrerPolicy="no-referrer"
+                          loading="lazy"
+                          decoding="async"
                           className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                         />
                       ) : (
@@ -120,4 +124,4 @@ export const MosaicView: React.FC<MosaicViewProps> = ({ items, onItemClick, newl
       ))}
     </div>
   );
-};
+});
