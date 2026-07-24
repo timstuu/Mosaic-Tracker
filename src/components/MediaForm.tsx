@@ -29,6 +29,8 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
   const [platform, setPlatform] = useState('');
   const [consoleName, setConsoleName] = useState('');
   const [notes, setNotes] = useState('');
+  const [tags, setTags] = useState('');
+  const [link, setLink] = useState('');
   const [isDnf, setIsDnf] = useState(false);
 
   // New states for TV show tracking
@@ -137,6 +139,8 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
       rating,
       dateAdded: new Date().toISOString(),
       notes,
+      tags,
+      link: link || undefined,
       watchDate: isVisualMedia ? (watchDate || undefined) : undefined,
       startDate: isInteractiveMedia ? (startDate || undefined) : undefined,
       endDate: isInteractiveMedia ? (finalEndDate || undefined) : undefined,
@@ -524,6 +528,28 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
                 )}
               </motion.div>
             </AnimatePresence>
+
+            <div>
+              <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Tags (comma separated)</label>
+              <input
+                type="text"
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+                placeholder="Action, Sci-Fi, Favorite..."
+                className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Link (Optional)</label>
+              <input
+                type="url"
+                value={link}
+                onChange={(e) => setLink(e.target.value)}
+                placeholder="https://..."
+                className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
+              />
+            </div>
 
             <div>
               <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Notes</label>
