@@ -68,3 +68,46 @@ export const searchGames = async (query: string): Promise<GameSearchResult[]> =>
     return [];
   }
 };
+
+export interface GameSynopsis {
+  genres: string[];
+  summary: string;
+}
+
+export const fetchGameSynopsis = async (title: string): Promise<GameSynopsis | undefined> => {
+  if (!RAWG_API_KEY) {
+    console.warn('VITE_RAWG_API_KEY missing. Please set it in your environment.');
+    return undefined;
+  }
+
+  try {
+    const searchResponse = await fetch(
+      `https://api.rawg.io/api/games?key=${RAWG_API_KEY}&search=${encodeURIComponent(title)}&page_size=1`
+    );
+    if (!searchResponse.ok) {
+      throw new Error(`RAWG API error: ${searchResponse.status}`);
+    }
+    const searchData = await searchResponse.json();
+    const match = searchData.results?.[0];
+    if (!match) return undefined;
+
+    const detailsResponse = await fetch(
+      `https://api.rawg.io/api/games/${match.id}?key=${RAWG_API_KEY}`
+    );
+    if (!detailsResponse.ok) {
+      throw new Error(`RAWG API error: ${detailsResponse.status}`);
+    }
+    const details = await detailsResponse.json();
+
+    const rawDescription: string = details.description_raw || '';
+    const firstParagraph = rawDescription.split(/\n+/)[0] || '';
+
+    return {
+      genres: (details.genres || []).slice(0, 3).map((g: { name: string }) => g.name),
+      summary: firstParagraph,
+    };
+  } catch (error) {
+    console.error('Error fetching synopsis from RAWG:', error);
+    return undefined;
+  }
+};

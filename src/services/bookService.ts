@@ -67,3 +67,38 @@ export const searchBooks = async (query: string): Promise<BookSearchResult[]> =>
     return [];
   }
 };
+
+export interface BookSynopsis {
+  genres: string[];
+  summary: string;
+}
+
+export const fetchBookSynopsis = async (title: string): Promise<BookSynopsis | undefined> => {
+  try {
+    const searchUrl = `https://openlibrary.org/search.json?title=${encodeURIComponent(title)}&limit=1`;
+    const searchResponse = await fetch(searchUrl);
+    if (!searchResponse.ok) return undefined;
+
+    const searchData = await searchResponse.json();
+    const book = searchData.docs?.[0];
+    if (!book?.key) return undefined;
+
+    const workResponse = await fetch(`https://openlibrary.org${book.key}.json`);
+    if (!workResponse.ok) return undefined;
+
+    const work = await workResponse.json();
+    const description: string = typeof work.description === 'string'
+      ? work.description
+      : work.description?.value || '';
+
+    const subjects: string[] = Array.isArray(work.subjects) ? work.subjects : [];
+
+    return {
+      genres: subjects.slice(0, 3),
+      summary: description.split(/\n+/)[0] || '',
+    };
+  } catch (error) {
+    console.error('Error fetching synopsis from Open Library:', error);
+    return undefined;
+  }
+};

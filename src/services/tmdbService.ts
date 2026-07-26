@@ -133,6 +133,47 @@ export async function fetchTVShowDetails(id: number): Promise<TMDbShowDetails | 
   }
 }
 
+export interface MediaSynopsis {
+  genres: string[];
+  summary: string;
+}
+
+export async function fetchMediaSynopsis(title: string, type: 'movie' | 'show' | 'documentary'): Promise<MediaSynopsis | undefined> {
+  if (!TMDB_API_KEY) {
+    console.warn('TMDB API Key missing. Please set VITE_TMDB_API_KEY in your environment.');
+    return undefined;
+  }
+
+  try {
+    const searchType = type === 'show' ? 'tv' : 'movie';
+    const searchResponse = await fetch(
+      `${BASE_URL}/search/${searchType}?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(title)}`
+    );
+    if (!searchResponse.ok) {
+      throw new Error(`TMDB API error: ${searchResponse.status}`);
+    }
+    const searchData = await searchResponse.json();
+    const match = searchData.results?.[0];
+    if (!match) return undefined;
+
+    const detailsResponse = await fetch(
+      `${BASE_URL}/${searchType}/${match.id}?api_key=${TMDB_API_KEY}`
+    );
+    if (!detailsResponse.ok) {
+      throw new Error(`TMDB API error: ${detailsResponse.status}`);
+    }
+    const details = await detailsResponse.json();
+
+    return {
+      genres: (details.genres || []).slice(0, 3).map((g: { name: string }) => g.name),
+      summary: details.overview || match.overview || '',
+    };
+  } catch (error) {
+    console.error('Error fetching synopsis from TMDB:', error);
+    return undefined;
+  }
+}
+
 export interface TMDbRecommendation {
   id: number;
   title: string;

@@ -2,21 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Film, Tv, Book, Gamepad2, Star, Calendar, Monitor, Cpu, Sparkles } from 'lucide-react';
 import { MediaType, MediaStatus, MediaItem } from '../types';
-import { fetchMediaPoster, fetchSimilarRecommendations, TMDbRecommendation } from '../services/tmdbService';
-import { fetchBookCover } from '../services/bookService';
-import { fetchGameCover } from '../services/gameService';
+import { fetchMediaPoster, fetchMediaSynopsis, fetchSimilarRecommendations, TMDbRecommendation } from '../services/tmdbService';
+import { fetchBookCover, fetchBookSynopsis } from '../services/bookService';
+import { fetchGameCover, fetchGameSynopsis } from '../services/gameService';
 import { supabase } from '../lib/supabase';
-
-const parseNotes = (text: string) => {
-  if (!text) return null;
-  const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-  if (lines.length >= 2 && lines[0].includes('|')) {
-    const genres = lines[0].split('|').map(g => g.trim()).filter(Boolean);
-    const summary = lines.slice(1).join('\n');
-    return { genres, summary };
-  }
-  return null;
-};
 
 interface EditModalProps {
   item: MediaItem;
@@ -52,77 +41,57 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
     setIsAnalyzing(true);
     setErrorMsg(null);
     try {
-      // Prepend BASE_URL to support subpath proxy routing on mobile & external clients
-      const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, '');
-      const response = await fetch(`${baseUrl}/api/gemini/synopsis`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title,
-          type,
-        }),
-      });
+      const synopsis = type === MediaType.BOOK
+        ? await fetchBookSynopsis(title)
+        : type === MediaType.GAME
+        ? await fetchGameSynopsis(title)
+        : await fetchMediaSynopsis(title, type as 'movie' | 'show' | 'documentary');
 
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error || 'Failed to generate synopsis');
+      if (!synopsis || !synopsis.summary) {
+        throw new Error('No synopsis found for this title.');
       }
 
-      const data = await response.json();
-      const newSynopsis = data.synopsis;
+      const genresList = synopsis.genres;
+      const summaryText = synopsis.summary;
 
-      if (newSynopsis) {
-        // Parse the synopsis to extract genres and actual summary
-        const parsed = parseNotes(newSynopsis);
-        let genresList: string[] = [];
-        let summaryText = newSynopsis;
-
-        if (parsed) {
-          genresList = parsed.genres;
-          summaryText = parsed.summary;
-        }
-
-        // 1. Merge genres into tags if any found
-        let updatedTags = tags;
-        if (genresList.length > 0) {
-          const existingTagsList = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
-          const mergedTagsList = [...existingTagsList];
-          genresList.forEach(genre => {
-            if (!mergedTagsList.some(t => t.toLowerCase() === genre.toLowerCase())) {
-              mergedTagsList.push(genre);
-            }
-          });
-          updatedTags = mergedTagsList.join(', ');
-          setTags(updatedTags);
-        }
-
-        // 2. Format the notes with the summary appended or set
-        let updatedNotes = notes;
-        const summarySnippet = `Summary:\n${summaryText}`;
-        if (notes && notes.trim().length > 0) {
-          updatedNotes = `${notes.trim()}\n\n${summarySnippet}`;
-        } else {
-          updatedNotes = summarySnippet;
-        }
-        setNotes(updatedNotes);
-        setSummaryAdded(true);
-
-        // 3. Update Supabase
-        if (item.id) {
-          const { error: dbError } = await supabase
-            .from('media_items')
-            .update({ 
-              notes: updatedNotes,
-              tags: updatedTags
-            })
-            .eq('id', item.id);
-
-          if (dbError) {
-            console.error('Failed to update Supabase notes and tags with synopsis:', dbError);
-            setErrorMsg('Synced locally, but database save failed.');
+      // 1. Merge genres into tags if any found
+      let updatedTags = tags;
+      if (genresList.length > 0) {
+        const existingTagsList = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+        const mergedTagsList = [...existingTagsList];
+        genresList.forEach(genre => {
+          if (!mergedTagsList.some(t => t.toLowerCase() === genre.toLowerCase())) {
+            mergedTagsList.push(genre);
           }
+        });
+        updatedTags = mergedTagsList.join(', ');
+        setTags(updatedTags);
+      }
+
+      // 2. Format the notes with the summary appended or set
+      let updatedNotes = notes;
+      const summarySnippet = `Summary:\n${summaryText}`;
+      if (notes && notes.trim().length > 0) {
+        updatedNotes = `${notes.trim()}\n\n${summarySnippet}`;
+      } else {
+        updatedNotes = summarySnippet;
+      }
+      setNotes(updatedNotes);
+      setSummaryAdded(true);
+
+      // 3. Update Supabase
+      if (item.id && supabase) {
+        const { error: dbError } = await supabase
+          .from('media_items')
+          .update({
+            notes: updatedNotes,
+            tags: updatedTags
+          })
+          .eq('id', item.id);
+
+        if (dbError) {
+          console.error('Failed to update Supabase notes and tags with synopsis:', dbError);
+          setErrorMsg('Synced locally, but database save failed.');
         }
       }
     } catch (err: any) {

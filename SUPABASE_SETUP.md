@@ -121,6 +121,15 @@ The game cover fetching was previously handled by a local Express proxy. To rest
 2. Store your IGDB Client ID and Secret in Supabase Secrets.
 3. Update `src/services/gameService.ts` to call your Edge Function.
 
+## Synopsis / Summary
+
+The "Get summary" feature (genres + synopsis) is generated entirely from free metadata APIs you already use — no LLM, no API costs, no extra setup:
+- Movies/Shows/Documentaries: TMDB (`fetchMediaSynopsis` in `src/services/tmdbService.ts`)
+- Games: RAWG (`fetchGameSynopsis` in `src/services/gameService.ts`)
+- Books: Open Library (`fetchBookSynopsis` in `src/services/bookService.ts`)
+
+These call the same public APIs already used for search/covers and run client-side, so they work identically in local dev and on GitHub Pages.
+
 ## PWA Icons
 
 The manifest in `vite.config.ts` expects icons at `public/pwa-192x192.png` and `public/pwa-512x512.png`. Please ensure these files exist in your `public` folder for the PWA to be fully functional.
@@ -136,6 +145,7 @@ To host your Mosaic Tracker on GitHub Pages:
         -   `VITE_SUPABASE_URL`: Your Supabase project URL.
         -   `VITE_SUPABASE_ANON_KEY`: Your Supabase project anonymous key.
         -   `VITE_TMDB_API_KEY`: Your TMDB API key (optional).
+        -   `VITE_RAWG_API_KEY`: Your RAWG API key (optional, needed for game covers and "Get summary" on games).
 3.  **Enable Pages**:
     -   Go to **Settings > Pages**.
     -   Under **Build and deployment > Source**, select **GitHub Actions**.
