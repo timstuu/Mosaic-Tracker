@@ -31,6 +31,9 @@ export interface MediaItem {
   imageUrl?: string;
   tags?: string;
   isbn?: string;
+  reminderDate?: string; // YYYY-MM-DD, when to fire a push reminder
+  reminderMessage?: string; // optional custom notification text
+  reminderSentAt?: string; // ISO string, set once the reminder push was sent
   currentSeason?: number;
   currentEpisode?: number;
   totalSeasons?: number;

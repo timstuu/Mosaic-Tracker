@@ -107,12 +107,107 @@ create policy "Users can delete their own friendships" on friendships
   for delete using ((select auth.uid()) = user_id);
 ```
 
+## 4. Reminders & Web Push
+
+Reminders let a user pick a day per entry and receive a real push notification on
+that day — even when the app is closed. Delivery is driven by a daily `pg_cron`
+job that calls the `send-reminders` Edge Function.
+
+### A. `media_items` reminder columns
+
+```sql
+alter table media_items
+  add column if not exists reminder_date date,
+  add column if not exists reminder_message text,
+  add column if not exists reminder_sent_at timestamptz;
+
+-- Partial index: the cron only scans not-yet-sent reminders.
+create index if not exists media_items_reminder_idx
+  on media_items (reminder_date) where reminder_sent_at is null;
+```
+
+### B. `push_subscriptions` table
+
+```sql
+create table push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) default auth.uid(),
+  endpoint text not null unique,
+  p256dh text not null,
+  auth text not null,
+  created_at timestamp with time zone default now()
+);
+
+alter table push_subscriptions enable row level security;
+
+create index push_subscriptions_user_id_idx on push_subscriptions(user_id);
+
+create policy "Users can view their own subscriptions" on push_subscriptions
+  for select using ((select auth.uid()) = user_id);
+
+create policy "Users can insert their own subscriptions" on push_subscriptions
+  for insert with check ((select auth.uid()) = user_id);
+
+create policy "Users can update their own subscriptions" on push_subscriptions
+  for update using ((select auth.uid()) = user_id);
+
+create policy "Users can delete their own subscriptions" on push_subscriptions
+  for delete using ((select auth.uid()) = user_id);
+```
+
+The `send-reminders` Edge Function uses the **service-role key** and therefore
+bypasses RLS to read all users' due reminders and subscriptions.
+
+### C. VAPID keys & Edge Function secrets
+
+1. Generate a key pair once: `npx web-push generate-vapid-keys`.
+2. Public key → client env `VITE_VAPID_PUBLIC_KEY` (safe to expose; add it to your
+   `.env`, `.env.example`, and the GitHub Actions build secrets in `deploy.yml`).
+3. Store the private key and a shared cron secret in Supabase function secrets:
+   ```bash
+   supabase secrets set \
+     VAPID_PUBLIC_KEY=<public> \
+     VAPID_PRIVATE_KEY=<private> \
+     VAPID_SUBJECT=mailto:you@example.com \
+     CRON_SECRET=<a-long-random-string>
+   ```
+   (`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected automatically.)
+4. Deploy the function: `supabase functions deploy send-reminders`.
+
+### D. Daily scheduler (pg_cron + pg_net)
+
+```sql
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+
+-- 07:00 UTC daily → ~08:00/09:00 Europe/Berlin depending on DST. The function
+-- itself computes "today" in Europe/Berlin, so the exact minute is not critical.
+select cron.schedule('send-reminders-daily', '0 7 * * *', $$
+  select net.http_post(
+    url := 'https://<project-ref>.supabase.co/functions/v1/send-reminders',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'x-cron-secret', '<CRON_SECRET>'
+    )
+  );
+$$);
+```
+
+Inspect scheduled runs via `select * from cron.job_run_details order by start_time desc;`.
+
+### E. iOS note
+
+Web Push on iOS only works when the PWA has been added to the Home Screen and
+notification permission was granted from inside the installed app (via the
+"Enable Notifications" button in Settings). A normal Safari tab will not deliver.
+
 ## Environment Variables
 
 Add the following to your environment variables in AI Studio and your local `.env` file:
 
 - `VITE_SUPABASE_URL`: Your Supabase project URL.
 - `VITE_SUPABASE_ANON_KEY`: Your Supabase project anonymous key.
+- `VITE_VAPID_PUBLIC_KEY`: Web Push VAPID public key (see "Reminders & Web Push").
 
 ## IGDB Game Covers
 

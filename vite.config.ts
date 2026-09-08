@@ -12,7 +12,12 @@ export default defineConfig(() => {
       tailwindcss(),
         VitePWA({
           registerType: 'autoUpdate',
-          includeAssets: ['favicon.ico', 'icons/apple-touch-icon.png', 'icons/favicon-32x32.png', 'icons/favicon-16x16.png'],
+          includeAssets: ['favicon.ico', 'icons/apple-touch-icon.png', 'icons/favicon-32x32.png', 'icons/favicon-16x16.png', 'push-sw.js'],
+          workbox: {
+            // Inject our push/notificationclick handlers into the generated SW
+            // without disturbing the default precaching setup.
+            importScripts: ['push-sw.js'],
+          },
           manifest: {
             name: 'Mosaic Media Tracker',
             short_name: 'Mosaic',
