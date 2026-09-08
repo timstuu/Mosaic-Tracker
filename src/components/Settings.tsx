@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { MediaStatus, MediaItem } from '../types';
-import { enablePush, getPermission, PushPermission } from '../lib/push';
+import { enablePush, disablePush, isSubscribed, getPermission, PushPermission } from '../lib/push';
 
 interface Friend {
   id: string;
@@ -46,21 +46,31 @@ export const Settings: React.FC<SettingsProps> = ({
   const [activeFriendId, setActiveFriendId] = useState<string | null>(null);
   const [isContextMenuOpen, setIsContextMenuOpen] = useState(false);
 
-  // Push notification permission state
+  // Push notification state
   const [pushPermission, setPushPermission] = useState<PushPermission>('default');
-  const [enablingPush, setEnablingPush] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
 
   useEffect(() => {
     setPushPermission(getPermission());
+    isSubscribed().then(setPushEnabled).catch(() => setPushEnabled(false));
   }, []);
 
-  const handleEnablePush = async () => {
-    setEnablingPush(true);
+  const handleTogglePush = async () => {
+    setPushBusy(true);
     try {
-      const result = await enablePush();
-      setPushPermission(result);
+      if (pushEnabled) {
+        await disablePush();
+        setPushEnabled(false);
+      } else {
+        const result = await enablePush();
+        setPushPermission(result);
+        setPushEnabled(await isSubscribed());
+      }
+    } catch (err) {
+      console.error('Failed to toggle notifications:', err);
     } finally {
-      setEnablingPush(false);
+      setPushBusy(false);
     }
   };
 
@@ -549,59 +559,6 @@ export const Settings: React.FC<SettingsProps> = ({
         </div>
       </div>
 
-      {/* 2b. Notifications Zone */}
-      <div className="my-16">
-        <div className="flex justify-between items-center border-b border-[#576d87]/10 pb-2 mb-8 font-sans">
-          <span className="text-[10px] uppercase tracking-widest font-bold text-white">Notifications</span>
-        </div>
-
-        <div className="bg-white/[0.015] border border-white/5 rounded-2xl p-6 space-y-4">
-          <div className="flex items-start gap-4">
-            <div className="w-10 h-10 rounded-xl bg-primary-accent/10 border border-primary-accent/20 flex items-center justify-center text-primary-accent shrink-0">
-              <Bell size={18} />
-            </div>
-            <div className="min-w-0 flex-1">
-              <span className="text-sm text-white font-medium block">Reminder Push Notifications</span>
-              <span className="text-[11px] text-[#576d87] leading-relaxed block mt-1">
-                Get a push notification on the day you set a reminder for an entry — even when the app is closed.
-              </span>
-            </div>
-          </div>
-
-          {pushPermission === 'unsupported' ? (
-            <p className="text-[11px] text-amber-400/80 leading-relaxed border-t border-white/5 pt-4">
-              Push notifications are not supported in this browser. On iPhone, add Mosaic to your Home Screen first, then open it from there.
-            </p>
-          ) : pushPermission === 'granted' ? (
-            <div className="flex items-center gap-2 border-t border-white/5 pt-4">
-              <span className="w-2 h-2 rounded-full bg-emerald-400" />
-              <span className="text-[11px] font-bold uppercase tracking-widest text-emerald-400">Notifications enabled</span>
-            </div>
-          ) : pushPermission === 'denied' ? (
-            <p className="text-[11px] text-amber-400/80 leading-relaxed border-t border-white/5 pt-4">
-              Notifications are blocked. Enable them for Mosaic in your device settings (iPhone: Settings → Notifications → Mosaic), then reopen the app.
-            </p>
-          ) : (
-            <div className="border-t border-white/5 pt-4 space-y-3">
-              <motion.button
-                type="button"
-                onClick={handleEnablePush}
-                disabled={enablingPush}
-                whileHover={{ scale: 1.01 }}
-                whileTap={{ scale: 0.99 }}
-                className="w-full flex items-center justify-center gap-2 py-3.5 bg-primary-accent text-app-bg rounded-xl font-bold uppercase tracking-widest text-[10px] transition-all disabled:opacity-50 focus:outline-none"
-              >
-                {enablingPush ? <Loader2 size={14} className="animate-spin" /> : <Bell size={14} />}
-                {enablingPush ? 'Enabling...' : 'Enable Notifications'}
-              </motion.button>
-              <p className="text-[10px] text-[#576d87] leading-relaxed">
-                On iPhone: you must add Mosaic to your Home Screen and open it from there before enabling.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* 3. Original Data Services Section (Fully Integrated) */}
       <div className="my-16">
         <div className="flex justify-between items-center border-b border-[#576d87]/10 pb-2 mb-8 font-sans">
@@ -783,26 +740,66 @@ export const Settings: React.FC<SettingsProps> = ({
         </motion.button>
       </div>
 
-      {/* 6. Version Tracker Section */}
+      {/* 6. App Info Section (updates + notifications) */}
       <div className="my-16 border-t border-[#576d87]/15 pt-12">
         <div className="flex justify-between items-center border-b border-[#576d87]/10 pb-2 mb-4 font-sans">
-          <span className="text-[10px] uppercase tracking-widest font-bold text-white">App Version</span>
+          <span className="text-[10px] uppercase tracking-widest font-bold text-white">App Info</span>
         </div>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/[0.01] border border-white/5 rounded-2xl p-5">
-          <div className="space-y-1">
-            <div className="text-xs font-semibold text-[#e7e7e7]">Version 1.0.3</div>
+
+        <div className="bg-white/[0.01] border border-white/5 rounded-2xl overflow-hidden">
+          {/* Version + update check */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 border-b border-white/[0.04]">
+            <div className="space-y-1">
+              <div className="text-xs font-semibold text-[#e7e7e7]">Version 1.0.3</div>
+              <div className="text-[10px] text-[#576d87] uppercase tracking-widest">Reload to fetch the latest build</div>
+            </div>
+            <motion.button
+              onClick={() => {
+                // Reload page to trigger service worker updates / cache-busting
+                window.location.reload();
+              }}
+              whileHover={{ scale: 1.02, backgroundColor: "rgba(255, 255, 255, 0.08)" }}
+              whileTap={{ scale: 0.98 }}
+              className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white font-bold uppercase tracking-widest text-[9px] transition-all focus:outline-none self-start sm:self-center shrink-0"
+            >
+              Check for updates
+            </motion.button>
           </div>
-          <motion.button
-            onClick={() => {
-              // Reload page to trigger service worker updates / cache-busting
-              window.location.reload();
-            }}
-            whileHover={{ scale: 1.02, backgroundColor: "rgba(255, 255, 255, 0.08)" }}
-            whileTap={{ scale: 0.98 }}
-            className="px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white font-bold uppercase tracking-widest text-[9px] transition-all focus:outline-none self-start sm:self-center"
-          >
-            Check for updates
-          </motion.button>
+
+          {/* Notifications on / off */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5">
+            <div className="space-y-1 min-w-0">
+              <div className="text-xs font-semibold text-[#e7e7e7] flex items-center gap-2">
+                <Bell size={12} className={pushEnabled ? 'text-primary-accent' : 'text-[#576d87]'} />
+                Notifications
+              </div>
+              <div className="text-[10px] text-[#576d87] leading-relaxed">
+                {pushPermission === 'unsupported'
+                  ? 'Not supported here. On iPhone, add Mosaic to your Home Screen and open it from there.'
+                  : pushPermission === 'denied'
+                  ? 'Blocked in your device settings. Allow notifications for Mosaic, then reopen the app.'
+                  : pushEnabled
+                  ? 'On — you get a push on the day a reminder is due.'
+                  : 'Off — reminders are saved, but no push is sent to this device.'}
+              </div>
+            </div>
+
+            <motion.button
+              type="button"
+              onClick={handleTogglePush}
+              disabled={pushBusy || pushPermission === 'unsupported' || pushPermission === 'denied'}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className={`px-4 py-2 rounded-xl font-bold uppercase tracking-widest text-[9px] transition-all focus:outline-none self-start sm:self-center shrink-0 flex items-center gap-1.5 border disabled:opacity-40 disabled:cursor-not-allowed ${
+                pushEnabled
+                  ? 'bg-primary-accent border-primary-accent text-app-bg'
+                  : 'bg-white/5 border-white/10 text-white'
+              }`}
+            >
+              {pushBusy && <Loader2 size={11} className="animate-spin" />}
+              {pushBusy ? 'Working...' : pushEnabled ? 'Turn off' : 'Turn on'}
+            </motion.button>
+          </div>
         </div>
       </div>
 

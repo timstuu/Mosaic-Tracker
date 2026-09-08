@@ -17,6 +17,31 @@ import { supabase, isSupabaseConfigured } from './supabase';
 
 const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY as string | undefined;
 
+/**
+ * Device-local flag remembering that the user switched notifications OFF here.
+ * A push subscription is per-device, so this preference is per-device too — and
+ * without it `ensurePushSubscription()` would silently re-subscribe on the next
+ * app start (browser permission stays "granted" after unsubscribing).
+ */
+const PUSH_DISABLED_KEY = 'mosaic_push_disabled';
+
+const isLocallyDisabled = (): boolean => {
+  try {
+    return localStorage.getItem(PUSH_DISABLED_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+
+const setLocallyDisabled = (disabled: boolean): void => {
+  try {
+    if (disabled) localStorage.setItem(PUSH_DISABLED_KEY, '1');
+    else localStorage.removeItem(PUSH_DISABLED_KEY);
+  } catch {
+    /* storage unavailable — non-fatal */
+  }
+};
+
 export type PushPermission = 'granted' | 'denied' | 'default' | 'unsupported';
 
 export const isPushSupported = (): boolean =>
@@ -106,10 +131,55 @@ export const enablePush = async (): Promise<PushPermission> => {
       });
     }
     await storeSubscription(sub);
+    setLocallyDisabled(false);
   } catch (err) {
     console.error('Failed to subscribe to push:', err);
   }
   return 'granted';
+};
+
+/**
+ * Is this device currently subscribed to push? Reflects the real state, not just
+ * the browser permission (permission can be "granted" while unsubscribed).
+ */
+export const isSubscribed = async (): Promise<boolean> => {
+  if (!isPushSupported()) return false;
+  if (Notification.permission !== 'granted') return false;
+  if (isLocallyDisabled()) return false;
+  const registration = await getRegistration();
+  if (!registration) return false;
+  try {
+    return !!(await registration.pushManager.getSubscription());
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Turn notifications off for this device: unsubscribe from push and drop the
+ * stored subscription so the server stops sending to it. The browser permission
+ * itself cannot be revoked programmatically — only the user can do that in the
+ * OS/browser settings — but without a subscription nothing is delivered.
+ */
+export const disablePush = async (): Promise<void> => {
+  setLocallyDisabled(true);
+  if (!isPushSupported()) return;
+
+  const registration = await getRegistration();
+  if (!registration) return;
+
+  try {
+    const sub = await registration.pushManager.getSubscription();
+    if (!sub) return;
+    const { endpoint } = sub;
+    await sub.unsubscribe();
+    if (isSupabaseConfigured && endpoint) {
+      const { error } = await supabase.from('push_subscriptions').delete().eq('endpoint', endpoint);
+      if (error) console.warn('Failed to remove push subscription:', error.message);
+    }
+  } catch (err) {
+    console.warn('disablePush failed:', err);
+  }
 };
 
 /**
@@ -120,6 +190,8 @@ export const enablePush = async (): Promise<PushPermission> => {
 export const ensurePushSubscription = async (): Promise<void> => {
   if (!isPushSupported() || !VAPID_PUBLIC_KEY) return;
   if (Notification.permission !== 'granted') return;
+  // Respect an explicit "off" on this device — never silently re-subscribe.
+  if (isLocallyDisabled()) return;
 
   const registration = await getRegistration();
   if (!registration) return;
