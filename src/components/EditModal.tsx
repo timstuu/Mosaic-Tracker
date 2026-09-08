@@ -636,7 +636,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
           </div>
 
           {/* Footer Action Buttons for Detail View */}
-          <div className="p-6 bg-secondary-accent/50 border-t border-white/5 flex flex-wrap gap-3">
+          <div className="p-6 bg-secondary-accent/50 border-t border-white/5 flex flex-col sm:flex-row sm:flex-wrap gap-3">
             {/* Quick Actions depending on status */}
 
             {derivedStatus === MediaStatus.ACTIVE && (
@@ -652,7 +652,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                     };
                     onSave(updated);
                   }}
-                  className="flex-1 px-4 py-3 bg-emerald-500/10 hover:bg-emerald-500 hover:text-app-bg text-emerald-400 border border-emerald-500/20 rounded-xl text-xs font-bold uppercase tracking-widest transition-all"
+                  className="w-full sm:w-auto sm:flex-1 px-4 py-3 bg-emerald-500/10 hover:bg-emerald-500 hover:text-app-bg text-emerald-400 border border-emerald-500/20 rounded-xl text-xs font-bold uppercase tracking-widest transition-all"
                 >
                   Mark Completed
                 </button>
@@ -671,25 +671,16 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                   }
                   setIsEditing(true);
                 }}
-                className="flex-1 px-4 py-3 bg-emerald-500/10 hover:bg-emerald-500 hover:text-app-bg text-emerald-400 border border-emerald-500/20 rounded-xl text-xs font-bold uppercase tracking-widest transition-all"
+                className="w-full sm:w-auto sm:flex-1 px-4 py-3 bg-emerald-500/10 hover:bg-emerald-500 hover:text-app-bg text-emerald-400 border border-emerald-500/20 rounded-xl text-xs font-bold uppercase tracking-widest transition-all"
               >
                 Mark as Tracked
               </button>
             )}
 
-            {/* Edit Button */}
-            <button
-              type="button"
-              onClick={() => setIsEditing(true)}
-              className="flex-1 px-4 py-3 bg-primary-accent text-app-bg rounded-xl text-xs font-bold uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-primary-accent/10"
-            >
-              Edit Details
-            </button>
-
             {/* Open Link */}
             {(() => {
-              const defaultSearchLink = (type === MediaType.MOVIE || type === MediaType.SHOW || type === MediaType.DOCUMENTARY) 
-                ? 'https://www.werstreamt.es/filme-serien/?q=' + encodeURIComponent(title) 
+              const defaultSearchLink = (type === MediaType.MOVIE || type === MediaType.SHOW || type === MediaType.DOCUMENTARY)
+                ? 'https://www.werstreamt.es/filme-serien/?q=' + encodeURIComponent(title)
                 : `https://www.google.com/search?q=${encodeURIComponent(title)}`;
               const linkUrl = link || defaultSearchLink;
               return (
@@ -697,12 +688,21 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                   href={linkUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="px-4 py-3 bg-app-bg text-zinc-300 border border-white/10 hover:bg-white/5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-1.5"
+                  className="w-full sm:w-auto px-4 py-3 bg-app-bg text-zinc-300 border border-white/10 hover:bg-white/5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-1.5"
                 >
                   Open Link
                 </a>
               );
             })()}
+
+            {/* Edit Button */}
+            <button
+              type="button"
+              onClick={() => setIsEditing(true)}
+              className="w-full sm:w-auto sm:flex-1 px-4 py-3 bg-primary-accent text-app-bg rounded-xl text-xs font-bold uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-primary-accent/10"
+            >
+              Edit Details
+            </button>
 
             {/* Delete Button */}
             <button
@@ -712,7 +712,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                   onDelete(item.id);
                 }
               }}
-              className="px-4 py-3 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500 hover:text-white transition-all uppercase tracking-widest"
+              className="w-full sm:w-auto px-4 py-3 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500 hover:text-white transition-all uppercase tracking-widest"
             >
               Delete
             </button>

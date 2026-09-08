@@ -123,17 +123,9 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
       }
     }
 
-    let savedTitle = title;
-    if (type === MediaType.SHOW && currentSeason) {
-      const seasonSuffix = ` - Season ${currentSeason}`;
-      if (!savedTitle.endsWith(seasonSuffix) && !savedTitle.includes(`Season ${currentSeason}`)) {
-        savedTitle = `${savedTitle}${seasonSuffix}`;
-      }
-    }
-
     const newItem: Partial<MediaItem> = {
       id: crypto.randomUUID(),
-      title: savedTitle,
+      title,
       type,
       status: derivedStatus,
       rating,
@@ -168,16 +160,16 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
         animate={{ scale: 1, y: 0 }}
         className="bg-secondary-accent border border-white/5 rounded-[2rem] w-full max-w-xl overflow-hidden shadow-2xl"
       >
-        <div className="p-6 border-b border-white/5 flex justify-between items-center bg-secondary-accent/50">
+        <div className="p-5 sm:p-6 border-b border-white/5 flex justify-between items-center bg-secondary-accent/50">
           <h2 className="text-xl font-semibold text-white">Add New Media</h2>
           <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full text-zinc-400 transition-colors" title="Close">
             <X size={20} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+        <form onSubmit={handleSubmit} className="p-5 sm:p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
           {/* Media Type Selector */}
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
             {[
               { id: MediaType.MOVIE, icon: <Film size={18} />, label: 'Movie' },
               { id: MediaType.SHOW, icon: <Tv size={18} />, label: 'Show' },
@@ -192,14 +184,14 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
                   setType(item.id);
                   setSuggestions([]);
                 }}
-                className={`flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all ${
+                className={`flex flex-col items-center justify-center gap-1.5 sm:gap-2 min-w-0 px-1 py-2.5 sm:p-3 rounded-2xl border transition-all ${
                   type === item.id 
                     ? 'bg-primary-accent border-primary-accent text-app-bg' 
                     : 'bg-app-bg border-white/10 text-zinc-400 hover:border-primary-accent/50'
                 }`}
               >
                 {item.icon}
-                <span className="text-[10px] font-bold uppercase tracking-wider">{item.label}</span>
+                <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wide sm:tracking-wider truncate max-w-full">{item.label}</span>
               </button>
             ))}
           </div>
@@ -399,8 +391,8 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
                 {/* For Games, Books, and Shows: Start Date & End Date */}
                 {(type === MediaType.GAME || type === MediaType.BOOK || type === MediaType.SHOW) && (
                   <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="min-w-0">
                         <label className="flex items-center gap-2 text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">
                           <Calendar size={12} /> Start Date
                         </label>
@@ -411,7 +403,7 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
                           className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
                         />
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <label className="flex items-center gap-2 text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">
                           <Calendar size={12} /> End Date
                         </label>
@@ -445,8 +437,8 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
                         <label className="block text-[10px] font-bold text-[#576d87] uppercase tracking-widest">
                           TV Show Tracking
                         </label>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-1.5">
+                        <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                          <div className="space-y-1.5 min-w-0">
                             <label className="block text-[9px] font-bold text-zinc-400 uppercase tracking-widest">
                               Season Watched
                             </label>
@@ -460,7 +452,7 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
                             />
                           </div>
                           
-                          <div className="space-y-1.5">
+                          <div className="space-y-1.5 min-w-0">
                             <label className="block text-[9px] font-bold text-zinc-400 uppercase tracking-widest">
                               Episodes in Season
                             </label>
