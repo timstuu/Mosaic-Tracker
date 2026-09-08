@@ -93,7 +93,11 @@ create table friendships (
 -- Enable RLS
 alter table friendships enable row level security;
 
--- Create indexes to resolve unindexed foreign keys and optimize query joins
+-- Create indexes to resolve unindexed foreign keys and optimize query joins.
+-- NOTE: only friend_id is indexed on purpose. A separate friendships_user_id_idx
+-- would be redundant, because lookups by user_id are already served efficiently by
+-- the leading column of the composite unique key (user_id, friend_id) — the extra
+-- index would only add write overhead.
 create index friendships_friend_id_idx on friendships(friend_id);
 
 -- Create policies for multi-user support

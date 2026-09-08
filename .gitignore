@@ -8,4 +8,6 @@ coverage/
 !.env.example
 .antigravity/
 supabase/.temp/
+.vscode/
+.claude/
 

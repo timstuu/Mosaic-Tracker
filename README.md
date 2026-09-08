@@ -80,7 +80,16 @@ This project uses **Row Level Security (RLS)** in Supabase to ensure user data i
 > [!IMPORTANT]
 > The RLS select policy `(select auth.uid()) = user_id` ensures that authenticated users can only access their own entries without running expensive full-table scans.
 > 
-> Fremdschlüssel (foreign keys) are indexed as described in [SUPABASE_SETUP.md](file:///c:/Users/Buero/Desktop/mosaic-tracker/SUPABASE_SETUP.md) to keep query times consistent even with thousands of entries.
+> Fremdschlüssel (foreign keys) are indexed as described in [SUPABASE_SETUP.md](SUPABASE_SETUP.md) to keep query times consistent even with thousands of entries.
+
+### Why the client loads data the way it does
+
+These constraints exist deliberately to keep Supabase load and the DOM small. Please keep them in place when extending the app:
+
+*   **Server-side filtering first** – queries filter by `user_id` in the database (`.eq('user_id', …)`) and select an explicit column list, rather than fetching everything and filtering in React. **When you add a column, remember to add it to the `select(...)` list in `fetchMedia`, or it will silently never load.**
+*   **Load limits** – the Tracker only renders completed entries from the **last 6 months** (older ones appear behind "Show older entries"); the Backlog renders the **first 9 entries per media type** behind a "Show more" toggle; the Friends feed uses `.limit(50)` directly in the query.
+*   **Double-fetch lock** – `lastFetchedUserIdRef` tracks the current user id so React Strict Mode and rapid tab switches cannot fire duplicate parallel fetches.
+*   **Retry engine** – transient network failures (`TypeError` / `Failed to fetch`) are retried up to 2 times with exponential backoff instead of leaving the UI empty.
 
 ---
 
