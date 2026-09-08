@@ -13,3 +13,30 @@ body {
   color: #e7e7e7;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 }
+
+/*
+ * iOS gives input[type=date] an intrinsic content width that ignores the
+ * container, so the field can spill past its parent on narrow screens.
+ * Resetting the native appearance lets it shrink like any other input.
+ */
+input[type="date"] {
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+  max-width: 100%;
+}
+
+input[type="date"]::-webkit-date-and-time-value {
+  text-align: left;
+  min-width: 0;
+}
+
+/*
+ * Caps a modal at the visible viewport minus the backdrop's p-4 inset, so a
+ * tall header/footer can never push the modal past the screen edges. The vh
+ * declaration is the fallback for engines without dvh.
+ */
+.modal-shell {
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
+}

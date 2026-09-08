@@ -226,17 +226,17 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
         <motion.div 
           initial={{ scale: 0.9, y: 20 }}
           animate={{ scale: 1, y: 0 }}
-          className="bg-secondary-accent border border-white/5 rounded-[2rem] w-full max-w-xl overflow-hidden shadow-2xl"
+          className="bg-secondary-accent border border-white/5 rounded-[2rem] w-full max-w-xl overflow-hidden shadow-2xl flex flex-col modal-shell"
         >
           {/* Header */}
-          <div className="p-6 border-b border-white/5 flex justify-between items-center bg-secondary-accent/50">
+          <div className="shrink-0 p-6 border-b border-white/5 flex justify-between items-center bg-secondary-accent/50">
             <h2 className="text-xl font-semibold text-white">Media Details</h2>
             <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full text-zinc-400 transition-colors" title="Close">
               <X size={20} />
             </button>
           </div>
 
-          <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+          <div className="flex-1 min-h-0 p-6 sm:p-8 space-y-6 overflow-y-auto custom-scrollbar">
             {/* Title & Banners (Always at the top) */}
             <div className="space-y-3">
               <h1 className="text-2xl font-bold text-white leading-tight font-sans">
@@ -636,7 +636,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
           </div>
 
           {/* Footer Action Buttons for Detail View */}
-          <div className="p-6 bg-secondary-accent/50 border-t border-white/5 flex flex-col sm:flex-row sm:flex-wrap gap-3">
+          <div className="shrink-0 p-5 sm:p-6 bg-secondary-accent/50 border-t border-white/5 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
             {/* Quick Actions depending on status */}
 
             {derivedStatus === MediaStatus.ACTIVE && (
@@ -652,7 +652,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                     };
                     onSave(updated);
                   }}
-                  className="w-full sm:w-auto sm:flex-1 px-4 py-3 bg-emerald-500/10 hover:bg-emerald-500 hover:text-app-bg text-emerald-400 border border-emerald-500/20 rounded-xl text-xs font-bold uppercase tracking-widest transition-all"
+                  className="col-span-2 sm:flex-1 px-4 py-3 bg-emerald-500/10 hover:bg-emerald-500 hover:text-app-bg text-emerald-400 border border-emerald-500/20 rounded-xl text-xs font-bold uppercase tracking-widest transition-all"
                 >
                   Mark Completed
                 </button>
@@ -671,7 +671,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                   }
                   setIsEditing(true);
                 }}
-                className="w-full sm:w-auto sm:flex-1 px-4 py-3 bg-emerald-500/10 hover:bg-emerald-500 hover:text-app-bg text-emerald-400 border border-emerald-500/20 rounded-xl text-xs font-bold uppercase tracking-widest transition-all"
+                className="col-span-2 sm:flex-1 px-4 py-3 bg-emerald-500/10 hover:bg-emerald-500 hover:text-app-bg text-emerald-400 border border-emerald-500/20 rounded-xl text-xs font-bold uppercase tracking-widest transition-all"
               >
                 Mark as Tracked
               </button>
@@ -688,7 +688,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                   href={linkUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full sm:w-auto px-4 py-3 bg-app-bg text-zinc-300 border border-white/10 hover:bg-white/5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-1.5"
+                  className="col-span-2 sm:w-auto px-4 py-3 bg-app-bg text-zinc-300 border border-white/10 hover:bg-white/5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-1.5"
                 >
                   Open Link
                 </a>
@@ -699,9 +699,9 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
             <button
               type="button"
               onClick={() => setIsEditing(true)}
-              className="w-full sm:w-auto sm:flex-1 px-4 py-3 bg-primary-accent text-app-bg rounded-xl text-xs font-bold uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-primary-accent/10"
+              className="sm:flex-1 px-4 py-3 bg-primary-accent text-app-bg rounded-xl text-xs font-bold uppercase tracking-widest hover:brightness-110 transition-all shadow-lg shadow-primary-accent/10"
             >
-              Edit Details
+              Edit
             </button>
 
             {/* Delete Button */}
@@ -712,7 +712,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                   onDelete(item.id);
                 }
               }}
-              className="w-full sm:w-auto px-4 py-3 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500 hover:text-white transition-all uppercase tracking-widest"
+              className="sm:w-auto px-4 py-3 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-bold hover:bg-red-500 hover:text-white transition-all uppercase tracking-widest"
             >
               Delete
             </button>
@@ -732,9 +732,9 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
       <motion.div 
         initial={{ scale: 0.9, y: 20 }}
         animate={{ scale: 1, y: 0 }}
-        className="bg-secondary-accent border border-white/5 rounded-[2rem] w-full max-w-xl overflow-hidden shadow-2xl"
+        className="bg-secondary-accent border border-white/5 rounded-[2rem] w-full max-w-xl overflow-hidden shadow-2xl flex flex-col modal-shell"
       >
-        <div className="p-6 border-b border-white/5 flex justify-between items-center bg-secondary-accent/50">
+        <div className="shrink-0 p-6 border-b border-white/5 flex justify-between items-center bg-secondary-accent/50">
           <h2 className="text-xl font-semibold text-white">
             {item.status === MediaStatus.PLANNED && derivedStatus === MediaStatus.COMPLETED ? 'Complete Tracking' : 'Edit Media'}
           </h2>
@@ -743,11 +743,11 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+        <form onSubmit={handleSubmit} className="flex-1 min-h-0 p-5 sm:p-8 space-y-6 overflow-y-auto custom-scrollbar">
           {/* Media Type Selector */}
           <div className="space-y-2">
             <label className="block text-[10px] font-bold text-white uppercase tracking-widest ml-1">Media Type</label>
-            <div className="grid grid-cols-5 gap-2">
+            <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
               {[
                 { id: MediaType.MOVIE, icon: <Film size={18} />, label: 'Movie' },
                 { id: MediaType.SHOW, icon: <Tv size={18} />, label: 'Show' },
@@ -759,14 +759,14 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                   key={m.id}
                   type="button"
                   onClick={() => setType(m.id)}
-                  className={`flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all ${
+                  className={`flex flex-col items-center justify-center gap-1.5 sm:gap-2 min-w-0 px-1 py-2.5 sm:p-3 rounded-2xl border transition-all ${
                     type === m.id 
                       ? 'bg-primary-accent border-primary-accent text-app-bg' 
                       : 'bg-app-bg border-white/10 text-zinc-400 hover:border-primary-accent/50'
                   }`}
                 >
                   {m.icon}
-                  <span className="text-[10px] font-bold uppercase tracking-wider">{m.label}</span>
+                  <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wide sm:tracking-wider truncate max-w-full">{m.label}</span>
                 </button>
               ))}
             </div>
@@ -929,9 +929,9 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                         <label className="block text-[10px] font-bold text-white uppercase tracking-widest">
                           Show Progress
                         </label>
-                        <div className="grid grid-cols-3 gap-4">
+                        <div className="grid grid-cols-3 gap-2 sm:gap-4">
                           {/* Season Number */}
-                          <div className="space-y-1.5">
+                          <div className="space-y-1.5 min-w-0">
                             <label className="block text-[9px] font-bold text-[#576d87] uppercase tracking-widest">
                               Season
                             </label>
@@ -946,7 +946,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                           </div>
 
                           {/* Episode Watched */}
-                          <div className="space-y-1.5">
+                          <div className="space-y-1.5 min-w-0">
                             <label className="block text-[9px] font-bold text-[#576d87] uppercase tracking-widest">
                               Current Ep
                             </label>
@@ -961,7 +961,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                           </div>
                           
                           {/* Total Episodes in Season */}
-                          <div className="space-y-1.5">
+                          <div className="space-y-1.5 min-w-0">
                             <label className="block text-[9px] font-bold text-[#576d87] uppercase tracking-widest">
                               Total Eps
                             </label>

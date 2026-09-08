@@ -158,16 +158,16 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
       <motion.div 
         initial={{ scale: 0.9, y: 20 }}
         animate={{ scale: 1, y: 0 }}
-        className="bg-secondary-accent border border-white/5 rounded-[2rem] w-full max-w-xl overflow-hidden shadow-2xl"
+        className="bg-secondary-accent border border-white/5 rounded-[2rem] w-full max-w-xl overflow-hidden shadow-2xl flex flex-col modal-shell"
       >
-        <div className="p-5 sm:p-6 border-b border-white/5 flex justify-between items-center bg-secondary-accent/50">
+        <div className="shrink-0 p-5 sm:p-6 border-b border-white/5 flex justify-between items-center bg-secondary-accent/50">
           <h2 className="text-xl font-semibold text-white">Add New Media</h2>
           <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full text-zinc-400 transition-colors" title="Close">
             <X size={20} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 sm:p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+        <form onSubmit={handleSubmit} className="flex-1 min-h-0 p-5 sm:p-8 space-y-6 overflow-y-auto custom-scrollbar">
           {/* Media Type Selector */}
           <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
             {[
