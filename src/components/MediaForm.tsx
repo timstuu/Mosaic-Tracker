@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Film, Tv, Book, Gamepad2, Star, Calendar, Monitor, Cpu } from 'lucide-react';
+import { X, Film, Tv, Book, Gamepad2, Star, Calendar, Monitor, Cpu, Bell } from 'lucide-react';
 import { MediaType, MediaItem, MediaStatus } from '../types';
 import { searchTVShows, fetchTVShowDetails, searchMovies } from '../services/tmdbService';
 import { searchBooks } from '../services/bookService';
@@ -32,6 +32,8 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
   const [tags, setTags] = useState('');
   const [link, setLink] = useState('');
   const [isDnf, setIsDnf] = useState(false);
+  const [reminderDate, setReminderDate] = useState('');
+  const [reminderMessage, setReminderMessage] = useState('');
 
   // New states for TV show tracking
   const [currentSeason, setCurrentSeason] = useState(1);
@@ -144,6 +146,8 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
       totalEpisodes: type === MediaType.SHOW ? totalEpisodes : undefined,
       imageUrl: imageUrl || undefined,
       isbn: type === MediaType.BOOK ? isbn : undefined,
+      reminderDate: reminderDate || undefined,
+      reminderMessage: reminderDate && reminderMessage ? reminderMessage : undefined,
     };
     onSave(newItem);
   };
@@ -552,6 +556,43 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
                 rows={3}
                 className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors resize-none"
               />
+            </div>
+
+            {/* Reminder (push notification on a chosen day) */}
+            <div className="pt-2 border-t border-white/5 space-y-4">
+              <label className="flex items-center gap-2 text-xs font-bold text-zinc-500 uppercase tracking-widest">
+                <Bell size={12} /> Reminder (Optional)
+              </label>
+              <div className="flex gap-2 items-center">
+                <input
+                  type="date"
+                  value={reminderDate}
+                  onChange={(e) => setReminderDate(e.target.value)}
+                  className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
+                />
+                {reminderDate && (
+                  <button
+                    type="button"
+                    onClick={() => { setReminderDate(''); setReminderMessage(''); }}
+                    className="p-3 text-zinc-500 hover:text-white bg-app-bg border border-white/10 rounded-xl transition-colors shrink-0"
+                    title="Clear reminder"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+              {reminderDate && (
+                <input
+                  type="text"
+                  value={reminderMessage}
+                  onChange={(e) => setReminderMessage(e.target.value)}
+                  placeholder="Notification text (e.g. Season 3 drops today)"
+                  className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
+                />
+              )}
+              <p className="text-[10px] text-[#576d87] leading-relaxed">
+                A push notification is sent on that day. Requires notifications enabled in Settings (on iPhone: install the app to your Home Screen first).
+              </p>
             </div>
           </div>
 

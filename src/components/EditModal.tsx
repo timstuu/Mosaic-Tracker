@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Film, Tv, Book, Gamepad2, Star, Calendar, Monitor, Cpu, Sparkles } from 'lucide-react';
+import { X, Film, Tv, Book, Gamepad2, Star, Calendar, Monitor, Cpu, Sparkles, Bell } from 'lucide-react';
 import { MediaType, MediaStatus, MediaItem } from '../types';
 import { fetchMediaPoster, fetchMediaSynopsis, fetchSimilarRecommendations, TMDbRecommendation } from '../services/tmdbService';
 import { fetchBookCover, fetchBookSynopsis } from '../services/bookService';
@@ -30,6 +30,8 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
   const [tags, setTags] = useState(item.tags || '');
   const [link, setLink] = useState(item.link || '');
   const [isbn, setIsbn] = useState(item.isbn || '');
+  const [reminderDate, setReminderDate] = useState(item.reminderDate || '');
+  const [reminderMessage, setReminderMessage] = useState(item.reminderMessage || '');
   const [isDnf, setIsDnf] = useState(item.status === MediaStatus.DNF);
 
   const [addedIds, setAddedIds] = useState<number[]>([]);
@@ -211,6 +213,8 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
       currentEpisode: type === MediaType.SHOW ? currentEpisode : undefined,
       totalSeasons: type === MediaType.SHOW ? 1 : undefined,
       totalEpisodes: type === MediaType.SHOW ? totalEpisodes : undefined,
+      reminderDate: reminderDate || undefined,
+      reminderMessage: reminderDate && reminderMessage ? reminderMessage : undefined,
     };
     onSave(updatedItem);
   };
@@ -556,6 +560,27 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                   </div>
                 )}
               </div>
+
+              {/* Reminder (detail view, only when set) */}
+              {item.reminderDate && (
+                <div className="space-y-2 w-full">
+                  <span className="block text-[10px] font-bold text-[#576d87] uppercase tracking-widest">Reminder</span>
+                  <div className="flex items-start gap-3 p-4 bg-app-bg rounded-xl border border-white/[0.03]">
+                    <Bell size={16} className="text-primary-accent shrink-0 mt-0.5" />
+                    <div className="min-w-0">
+                      <span className="text-xs text-zinc-200 font-mono block">
+                        {new Date(item.reminderDate).toLocaleDateString()}
+                        {item.reminderSentAt && (
+                          <span className="ml-2 text-[9px] uppercase tracking-widest text-emerald-400/80">Sent</span>
+                        )}
+                      </span>
+                      {item.reminderMessage && (
+                        <span className="text-xs text-zinc-400 italic block mt-1 break-words">"{item.reminderMessage}"</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Similar Title Recommendations */}
@@ -1043,6 +1068,43 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                 rows={3}
                 className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors resize-none"
               />
+            </div>
+
+            {/* Reminder (push notification on a chosen day) */}
+            <div className="space-y-3 pt-2 border-t border-white/5">
+              <label className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-widest">
+                <Bell size={12} /> Reminder (Optional)
+              </label>
+              <div className="flex gap-2 items-center">
+                <input
+                  type="date"
+                  value={reminderDate}
+                  onChange={(e) => setReminderDate(e.target.value)}
+                  className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
+                />
+                {reminderDate && (
+                  <button
+                    type="button"
+                    onClick={() => { setReminderDate(''); setReminderMessage(''); }}
+                    className="p-3 text-zinc-500 hover:text-white bg-app-bg border border-white/10 rounded-xl transition-colors shrink-0"
+                    title="Clear reminder"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
+              {reminderDate && (
+                <input
+                  type="text"
+                  value={reminderMessage}
+                  onChange={(e) => setReminderMessage(e.target.value)}
+                  placeholder="Notification text (e.g. Season 3 drops today)"
+                  className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
+                />
+              )}
+              <p className="text-[10px] text-[#576d87] leading-relaxed">
+                A push notification is sent on that day. Requires notifications enabled in Settings (on iPhone: install the app to your Home Screen first).
+              </p>
             </div>
 
             {/* TMDB Recommendations shelf */}

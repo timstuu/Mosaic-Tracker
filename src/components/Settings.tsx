@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { 
-  User, Users, Search, LogOut, Trash2, Loader2, Upload, Database, 
-  UserMinus, UserPlus, X, Shield 
+import {
+  User, Users, Search, LogOut, Trash2, Loader2, Upload, Database,
+  UserMinus, UserPlus, X, Shield, Bell
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { MediaStatus, MediaItem } from '../types';
+import { enablePush, getPermission, PushPermission } from '../lib/push';
 
 interface Friend {
   id: string;
@@ -44,6 +45,24 @@ export const Settings: React.FC<SettingsProps> = ({
   const [searching, setSearching] = useState(false);
   const [activeFriendId, setActiveFriendId] = useState<string | null>(null);
   const [isContextMenuOpen, setIsContextMenuOpen] = useState(false);
+
+  // Push notification permission state
+  const [pushPermission, setPushPermission] = useState<PushPermission>('default');
+  const [enablingPush, setEnablingPush] = useState(false);
+
+  useEffect(() => {
+    setPushPermission(getPermission());
+  }, []);
+
+  const handleEnablePush = async () => {
+    setEnablingPush(true);
+    try {
+      const result = await enablePush();
+      setPushPermission(result);
+    } finally {
+      setEnablingPush(false);
+    }
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonUploadRef = useRef<HTMLInputElement>(null);
@@ -526,6 +545,59 @@ export const Settings: React.FC<SettingsProps> = ({
                 </div>
               </motion.div>
             ))
+          )}
+        </div>
+      </div>
+
+      {/* 2b. Notifications Zone */}
+      <div className="my-16">
+        <div className="flex justify-between items-center border-b border-[#576d87]/10 pb-2 mb-8 font-sans">
+          <span className="text-[10px] uppercase tracking-widest font-bold text-white">Notifications</span>
+        </div>
+
+        <div className="bg-white/[0.015] border border-white/5 rounded-2xl p-6 space-y-4">
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-xl bg-primary-accent/10 border border-primary-accent/20 flex items-center justify-center text-primary-accent shrink-0">
+              <Bell size={18} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-sm text-white font-medium block">Reminder Push Notifications</span>
+              <span className="text-[11px] text-[#576d87] leading-relaxed block mt-1">
+                Get a push notification on the day you set a reminder for an entry — even when the app is closed.
+              </span>
+            </div>
+          </div>
+
+          {pushPermission === 'unsupported' ? (
+            <p className="text-[11px] text-amber-400/80 leading-relaxed border-t border-white/5 pt-4">
+              Push notifications are not supported in this browser. On iPhone, add Mosaic to your Home Screen first, then open it from there.
+            </p>
+          ) : pushPermission === 'granted' ? (
+            <div className="flex items-center gap-2 border-t border-white/5 pt-4">
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              <span className="text-[11px] font-bold uppercase tracking-widest text-emerald-400">Notifications enabled</span>
+            </div>
+          ) : pushPermission === 'denied' ? (
+            <p className="text-[11px] text-amber-400/80 leading-relaxed border-t border-white/5 pt-4">
+              Notifications are blocked. Enable them for Mosaic in your device settings (iPhone: Settings → Notifications → Mosaic), then reopen the app.
+            </p>
+          ) : (
+            <div className="border-t border-white/5 pt-4 space-y-3">
+              <motion.button
+                type="button"
+                onClick={handleEnablePush}
+                disabled={enablingPush}
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+                className="w-full flex items-center justify-center gap-2 py-3.5 bg-primary-accent text-app-bg rounded-xl font-bold uppercase tracking-widest text-[10px] transition-all disabled:opacity-50 focus:outline-none"
+              >
+                {enablingPush ? <Loader2 size={14} className="animate-spin" /> : <Bell size={14} />}
+                {enablingPush ? 'Enabling...' : 'Enable Notifications'}
+              </motion.button>
+              <p className="text-[10px] text-[#576d87] leading-relaxed">
+                On iPhone: you must add Mosaic to your Home Screen and open it from there before enabling.
+              </p>
+            </div>
           )}
         </div>
       </div>

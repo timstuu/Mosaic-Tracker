@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
+import { ensurePushSubscription } from './lib/push';
 import { Auth } from './components/Auth';
 import { Layout } from './components/Layout';
 import { ActiveMediaShelf } from './components/ActiveMediaShelf';
@@ -118,6 +119,8 @@ export default function App() {
             fetchMedia(uid);
             fetchChallenges(uid);
           }
+          // Silently refresh a push subscription that may have expired (esp. iOS).
+          ensurePushSubscription();
         } else {
           lastFetchedUserIdRef.current = null;
           setMediaItems([]);
@@ -150,16 +153,19 @@ export default function App() {
       // Exact user_id database filtering to drastically reduce DB load and ensure privacy
       const { data, error } = await supabase
         .from('media_items')
-        .select('id, user_id, title, type, status, rating, watchDate, startDate, endDate, dateAdded, imageUrl, tags, platform, console, notes, link, isbn, current_season, current_episode, total_seasons, total_episodes')
+        .select('id, user_id, title, type, status, rating, watchDate, startDate, endDate, dateAdded, imageUrl, tags, platform, console, notes, link, isbn, reminder_date, reminder_message, reminder_sent_at, current_season, current_episode, total_seasons, total_episodes')
         .eq('user_id', currentUserId);
       
       if (error) throw error;
       
       const normalizedData = (data || []).map(item => {
         let status = item.status?.toLowerCase().trim() || MediaStatus.PLANNED;
-        return { 
-          ...item, 
+        return {
+          ...item,
           status,
+          reminderDate: item.reminder_date ?? item.reminderDate ?? undefined,
+          reminderMessage: item.reminder_message ?? item.reminderMessage ?? undefined,
+          reminderSentAt: item.reminder_sent_at ?? item.reminderSentAt ?? undefined,
           currentSeason: item.current_season !== undefined && item.current_season !== null ? item.current_season : (item.currentSeason ?? 1),
           currentEpisode: item.current_episode !== undefined && item.current_episode !== null ? item.current_episode : (item.currentEpisode ?? 0),
           totalSeasons: item.total_seasons !== undefined && item.total_seasons !== null ? item.total_seasons : (item.totalSeasons ?? 1),
@@ -295,10 +301,19 @@ export default function App() {
       if (item.totalSeasons !== undefined) dbItem.total_seasons = item.totalSeasons;
       if (item.totalEpisodes !== undefined) dbItem.total_episodes = item.totalEpisodes;
 
+      // Reminder fields: map to snake_case columns. Re-arm (sent_at = null) on every
+      // write so a newly set or changed date can fire again; a cleared date nulls out.
+      dbItem.reminder_date = item.reminderDate || null;
+      dbItem.reminder_message = item.reminderMessage || null;
+      dbItem.reminder_sent_at = null;
+
       delete dbItem.currentSeason;
       delete dbItem.currentEpisode;
       delete dbItem.totalSeasons;
       delete dbItem.totalEpisodes;
+      delete dbItem.reminderDate;
+      delete dbItem.reminderMessage;
+      delete dbItem.reminderSentAt;
 
       const itemWithUser = { ...dbItem, user_id: user.id };
 
@@ -367,10 +382,19 @@ export default function App() {
       if (item.totalSeasons !== undefined) dbItem.total_seasons = item.totalSeasons;
       if (item.totalEpisodes !== undefined) dbItem.total_episodes = item.totalEpisodes;
 
+      // Reminder fields: map to snake_case columns. Re-arm (sent_at = null) on every
+      // write so a newly set or changed date can fire again; a cleared date nulls out.
+      dbItem.reminder_date = item.reminderDate || null;
+      dbItem.reminder_message = item.reminderMessage || null;
+      dbItem.reminder_sent_at = null;
+
       delete dbItem.currentSeason;
       delete dbItem.currentEpisode;
       delete dbItem.totalSeasons;
       delete dbItem.totalEpisodes;
+      delete dbItem.reminderDate;
+      delete dbItem.reminderMessage;
+      delete dbItem.reminderSentAt;
 
       const itemWithUser = { ...dbItem, user_id: user.id };
 
