@@ -60,7 +60,12 @@ Deno.serve(async (req) => {
 
     const vapidPublic = Deno.env.get('VAPID_PUBLIC_KEY')
     const vapidPrivate = Deno.env.get('VAPID_PRIVATE_KEY')
-    const vapidSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:admin@example.com'
+    // web-push demands a mailto:/https: URL here. A bare email address is the
+    // obvious thing to configure and fails at send time, so normalise it.
+    const rawSubject = Deno.env.get('VAPID_SUBJECT') || 'mailto:admin@example.com'
+    const vapidSubject = /^(mailto:|https?:)/i.test(rawSubject.trim())
+      ? rawSubject.trim()
+      : `mailto:${rawSubject.trim()}`
     if (!vapidPublic || !vapidPrivate) {
       throw new Error('VAPID keys are not configured')
     }

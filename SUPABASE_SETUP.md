@@ -183,6 +183,10 @@ bypasses RLS to read all users' due reminders and subscriptions.
      CRON_SECRET=<a-long-random-string>
    ```
    (`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected automatically.)
+
+   `VAPID_SUBJECT` must be a URL — keep the `mailto:` prefix. A bare email address
+   is rejected by `web-push` at send time; the function normalises it defensively,
+   but setting it correctly is clearer.
 4. Deploy the function: `supabase functions deploy send-reminders`.
 
 > [!WARNING]
