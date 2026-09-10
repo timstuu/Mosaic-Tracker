@@ -231,7 +231,12 @@ select cron.schedule('send-reminders', '*/15 * * * *', $$
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'x-cron-secret', '<CRON_SECRET>'
-    )
+    ),
+    -- pg_net defaults to a 5s timeout. Between two runs the function goes cold,
+    -- and a cold start (npm: imports for supabase-js and web-push) regularly
+    -- takes longer than that, so every scheduled run would time out while the
+    -- function itself is still working.
+    timeout_milliseconds := 30000
   );
 $$);
 ```
@@ -285,6 +290,15 @@ from cron.job_run_details order by start_time desc limit 10;
 select status_code, content, error_msg, created
 from net._http_response order by created desc limit 10;
 ```
+
+**Scheduled runs time out while manual calls succeed.** If `net._http_response` shows
+`Timeout of 5000 ms reached` for runs landing exactly on a cron slot (`:00`, `:15`,
+`:30`, `:45`) but manual calls return `200`, the function is cold-starting. Between two
+runs it is torn down, and booting it — the `npm:` imports for `supabase-js` and
+`web-push` — regularly exceeds pg_net's 5 s default. Manual tests succeed only because
+a recent call left the function warm. Raise `timeout_milliseconds` in the job (see
+section D). Note the function usually finishes anyway; pg_net just stops waiting, so
+the push may well have been delivered even though the row records a timeout.
 
 **Placeholders left in the job.** If `cron.job_run_details` shows `failed` with
 `Quote command returned error` pointing at `net._encode_url_with_params_array`, and
