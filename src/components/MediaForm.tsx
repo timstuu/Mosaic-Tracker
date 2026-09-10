@@ -34,6 +34,7 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
   const [isDnf, setIsDnf] = useState(false);
   const [reminderDate, setReminderDate] = useState('');
   const [reminderTime, setReminderTime] = useState('');
+  const [timeFocused, setTimeFocused] = useState(false);
   const [reminderMessage, setReminderMessage] = useState('');
 
   // New states for TV show tracking
@@ -49,6 +50,9 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
 
   // Book lookup state
   const [isbn, setIsbn] = useState('');
+
+  // Show the 09:00 default only while the field is genuinely empty and untouched.
+  const showTimeHint = !!reminderDate && !reminderTime && !timeFocused;
 
   const isVisualMedia = [MediaType.MOVIE, MediaType.DOCUMENTARY].includes(type);
   const isInteractiveMedia = [MediaType.BOOK, MediaType.GAME, MediaType.SHOW].includes(type);
@@ -573,13 +577,28 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
                     onChange={(e) => setReminderDate(e.target.value)}
                     className="w-full min-w-0 bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
                   />
-                  <input
-                    type="time"
-                    value={reminderTime}
-                    onChange={(e) => setReminderTime(e.target.value)}
-                    disabled={!reminderDate}
-                    className="w-full min-w-0 bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors disabled:opacity-40"
-                  />
+                  {/* type="time" ignores the placeholder attribute, so the 09:00 default
+                      is drawn as an overlay and the native "--:--" hidden underneath.
+                      Focus is tracked in state rather than via a CSS :focus variant so
+                      the digits are guaranteed visible while typing. */}
+                  <div className="relative min-w-0">
+                    <input
+                      type="time"
+                      value={reminderTime}
+                      onChange={(e) => setReminderTime(e.target.value)}
+                      onFocus={() => setTimeFocused(true)}
+                      onBlur={() => setTimeFocused(false)}
+                      disabled={!reminderDate}
+                      className={`w-full min-w-0 bg-app-bg border border-white/10 rounded-xl px-4 py-3 focus:outline-none focus:border-primary-accent/50 transition-colors disabled:opacity-40 ${
+                        showTimeHint ? 'text-transparent' : 'text-white'
+                      }`}
+                    />
+                    {showTimeHint && (
+                      <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#576d87]">
+                        09:00
+                      </span>
+                    )}
+                  </div>
                 </div>
                 {reminderDate && (
                   <button
