@@ -214,6 +214,12 @@ rather than once daily. The function resolves the current wall-clock time in
 Europe/Berlin itself, so DST needs no special handling. 15 minutes is also the
 delivery granularity: a reminder set for 09:00 arrives between 09:00 and 09:15.
 
+> [!CAUTION]
+> **Replace both placeholders below before running this.** `<project-ref>` and
+> `<CRON_SECRET>` are not valid values. Pasting the block unchanged fails in a way
+> that is genuinely hard to read — see "Placeholders left in the job" under
+> Troubleshooting.
+
 ```sql
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
@@ -221,12 +227,19 @@ create extension if not exists pg_net;
 select cron.schedule('send-reminders', '*/15 * * * *', $$
   select net.http_post(
     url := 'https://<project-ref>.supabase.co/functions/v1/send-reminders',
+    body := '{}'::jsonb,
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'x-cron-secret', '<CRON_SECRET>'
     )
   );
 $$);
+```
+
+Verify what actually got stored — no `<...>` may remain:
+
+```sql
+select jobname, schedule, active, command from cron.job;
 ```
 
 > [!IMPORTANT]
@@ -240,7 +253,47 @@ $$);
 Inspect scheduled runs via `select * from cron.job_run_details order by start_time desc;`,
 and the registered jobs via `select * from cron.job;`.
 
-### E. iOS note
+### E. Troubleshooting
+
+Reminders are deliberately set-and-forget with no in-app fallback, so **every failure
+in this chain is silent**: the entry looks fine, the reminder sits in the database, and
+nothing arrives. Diagnose from the outside in.
+
+**First, call the function directly** (this bypasses cron entirely):
+
+```bash
+curl.exe -i -X POST "https://<project-ref>.supabase.co/functions/v1/send-reminders" -H "Content-Type: application/json" -H "x-cron-secret: <CRON_SECRET>"
+```
+
+| Symptom | Cause | Fix |
+| --- | --- | --- |
+| `UNAUTHORIZED_NO_AUTH_HEADER` | Gateway rejected it before the function ran — JWT verification is on | See the warning in section C |
+| `{"error":"Unauthorized"}` | The function's own check — `x-cron-secret` does not match `CRON_SECRET` | Re-set the secret, redeploy, update the cron job |
+| `Vapid subject is not a valid URL` | `VAPID_SUBJECT` is not a `mailto:`/`https:` URL | Set it with the `mailto:` prefix |
+| `200` with `"processed":0` | Nothing was due | Not an error — check `reminder_date`/`reminder_time`, and whether `reminder_sent_at` is already set |
+| `200` with `"sent":0` | Reminder found, but no push subscription stored | Enable notifications in the app (Settings → App Info) |
+
+**If the direct call works but scheduled runs do not**, the break is between the
+database and the function. Note that `net.http_post` is **asynchronous**: it only
+queues the request, so `cron.job_run_details` reports `succeeded` even when the HTTP
+call later fails. The real outcome lives in `net._http_response`:
+
+```sql
+select jobid, status, start_time, return_message
+from cron.job_run_details order by start_time desc limit 10;
+
+select status_code, content, error_msg, created
+from net._http_response order by created desc limit 10;
+```
+
+**Placeholders left in the job.** If `cron.job_run_details` shows `failed` with
+`Quote command returned error` pointing at `net._encode_url_with_params_array`, and
+`net._http_response` has no matching row, the job's URL is not a valid URL — almost
+always because `<project-ref>` was never substituted. `<` and `>` are illegal in a
+hostname, so the request fails during URL encoding and is never queued. Check with
+`select command from cron.job;` and recreate the job with real values.
+
+### F. iOS note
 
 Web Push on iOS only works when the PWA has been added to the Home Screen and
 notification permission was granted from inside the installed app (via the
