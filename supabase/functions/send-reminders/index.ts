@@ -130,7 +130,7 @@ Deno.serve(async (req) => {
       // here wastes the most prominent line. The entry title is the useful part.
       const payload = JSON.stringify({
         title: item.title,
-        body: item.reminder_message || 'Das könnte interessant sein...',
+        body: item.reminder_message || 'This might be worth a look...',
         url: '/Mosaic-Tracker/',
         tag: `reminder-${item.id}`,
       })

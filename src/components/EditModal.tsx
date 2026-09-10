@@ -1078,7 +1078,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                 <Bell size={12} /> Reminder (Optional)
               </label>
               <div className="flex gap-2 items-center">
-                <div className="grid grid-cols-2 gap-2 flex-1 min-w-0">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 flex-1 min-w-0">
                   <input
                     type="date"
                     value={reminderDate}
@@ -1113,9 +1113,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                   className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
                 />
               )}
-              <p className="text-[10px] text-[#576d87] leading-relaxed">
-                A push notification is sent at that time. Leave the time empty to be reminded at <span className="font-mono text-zinc-400">09:00</span>. Requires notifications enabled in Settings (on iPhone: install the app to your Home Screen first).
-              </p>
+
             </div>
 
             {/* TMDB Recommendations shelf */}
