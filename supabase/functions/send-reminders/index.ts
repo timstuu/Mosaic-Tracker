@@ -117,7 +117,10 @@ Deno.serve(async (req) => {
     }
 
     let sent = 0
-    const deadSubscriptionIds: string[] = []
+    // A Set, not an array: the same dead subscription is hit once per due item,
+    // which would otherwise inflate the pruned count and re-send to a known
+    // dead endpoint.
+    const deadSubscriptionIds = new Set<string>()
     const sentItemIds: string[] = []
 
     // 4. Send a notification per due item to each of the user's devices.
@@ -133,6 +136,7 @@ Deno.serve(async (req) => {
       })
 
       for (const sub of userSubs) {
+        if (deadSubscriptionIds.has(sub.id)) continue
         try {
           await webpush.sendNotification(
             { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
@@ -142,7 +146,7 @@ Deno.serve(async (req) => {
         } catch (err: any) {
           const status = err?.statusCode
           if (status === 404 || status === 410) {
-            deadSubscriptionIds.push(sub.id)
+            deadSubscriptionIds.add(sub.id)
           } else {
             console.error('Push send failed:', status, err?.body || err?.message)
           }
@@ -158,15 +162,15 @@ Deno.serve(async (req) => {
         .update({ reminder_sent_at: new Date().toISOString() })
         .in('id', sentItemIds)
     }
-    if (deadSubscriptionIds.length > 0) {
-      await supabase.from('push_subscriptions').delete().in('id', deadSubscriptionIds)
+    if (deadSubscriptionIds.size > 0) {
+      await supabase.from('push_subscriptions').delete().in('id', [...deadSubscriptionIds])
     }
 
     return new Response(
       JSON.stringify({
         processed: dueItems.length,
         sent,
-        prunedSubscriptions: deadSubscriptionIds.length,
+        prunedSubscriptions: deadSubscriptionIds.size,
         date: today,
         time: nowTime,
       }),
