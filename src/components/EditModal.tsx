@@ -31,6 +31,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
   const [link, setLink] = useState(item.link || '');
   const [isbn, setIsbn] = useState(item.isbn || '');
   const [reminderDate, setReminderDate] = useState(item.reminderDate || '');
+  const [reminderTime, setReminderTime] = useState(item.reminderTime || '');
   const [reminderMessage, setReminderMessage] = useState(item.reminderMessage || '');
   const [isDnf, setIsDnf] = useState(item.status === MediaStatus.DNF);
 
@@ -214,6 +215,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
       totalSeasons: type === MediaType.SHOW ? 1 : undefined,
       totalEpisodes: type === MediaType.SHOW ? totalEpisodes : undefined,
       reminderDate: reminderDate || undefined,
+      reminderTime: reminderDate && reminderTime ? reminderTime : undefined,
       reminderMessage: reminderDate && reminderMessage ? reminderMessage : undefined,
     };
     onSave(updatedItem);
@@ -569,7 +571,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                     <Bell size={16} className="text-primary-accent shrink-0 mt-0.5" />
                     <div className="min-w-0">
                       <span className="text-xs text-zinc-200 font-mono block">
-                        {new Date(item.reminderDate).toLocaleDateString()}
+                        {new Date(item.reminderDate).toLocaleDateString()} · {item.reminderTime || '09:00'}
                         {item.reminderSentAt && (
                           <span className="ml-2 text-[9px] uppercase tracking-widest text-emerald-400/80">Sent</span>
                         )}
@@ -1076,16 +1078,25 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                 <Bell size={12} /> Reminder (Optional)
               </label>
               <div className="flex gap-2 items-center">
-                <input
-                  type="date"
-                  value={reminderDate}
-                  onChange={(e) => setReminderDate(e.target.value)}
-                  className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
-                />
+                <div className="grid grid-cols-2 gap-2 flex-1 min-w-0">
+                  <input
+                    type="date"
+                    value={reminderDate}
+                    onChange={(e) => setReminderDate(e.target.value)}
+                    className="w-full min-w-0 bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
+                  />
+                  <input
+                    type="time"
+                    value={reminderTime}
+                    onChange={(e) => setReminderTime(e.target.value)}
+                    disabled={!reminderDate}
+                    className="w-full min-w-0 bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors disabled:opacity-40"
+                  />
+                </div>
                 {reminderDate && (
                   <button
                     type="button"
-                    onClick={() => { setReminderDate(''); setReminderMessage(''); }}
+                    onClick={() => { setReminderDate(''); setReminderTime(''); setReminderMessage(''); }}
                     className="p-3 text-zinc-500 hover:text-white bg-app-bg border border-white/10 rounded-xl transition-colors shrink-0"
                     title="Clear reminder"
                   >
@@ -1103,7 +1114,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                 />
               )}
               <p className="text-[10px] text-[#576d87] leading-relaxed">
-                A push notification is sent on that day. Requires notifications enabled in Settings (on iPhone: install the app to your Home Screen first).
+                A push notification is sent at that time. Leave the time empty to be reminded at <span className="font-mono text-zinc-400">09:00</span>. Requires notifications enabled in Settings (on iPhone: install the app to your Home Screen first).
               </p>
             </div>
 

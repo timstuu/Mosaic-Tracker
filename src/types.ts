@@ -32,6 +32,7 @@ export interface MediaItem {
   tags?: string;
   isbn?: string;
   reminderDate?: string; // YYYY-MM-DD, when to fire a push reminder
+  reminderTime?: string; // HH:MM local time; empty falls back to 09:00
   reminderMessage?: string; // optional custom notification text
   reminderSentAt?: string; // ISO string, set once the reminder push was sent
   currentSeason?: number;

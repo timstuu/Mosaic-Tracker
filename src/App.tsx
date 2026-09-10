@@ -153,7 +153,7 @@ export default function App() {
       // Exact user_id database filtering to drastically reduce DB load and ensure privacy
       const { data, error } = await supabase
         .from('media_items')
-        .select('id, user_id, title, type, status, rating, watchDate, startDate, endDate, dateAdded, imageUrl, tags, platform, console, notes, link, isbn, reminder_date, reminder_message, reminder_sent_at, current_season, current_episode, total_seasons, total_episodes')
+        .select('id, user_id, title, type, status, rating, watchDate, startDate, endDate, dateAdded, imageUrl, tags, platform, console, notes, link, isbn, reminder_date, reminder_time, reminder_message, reminder_sent_at, current_season, current_episode, total_seasons, total_episodes')
         .eq('user_id', currentUserId);
       
       if (error) throw error;
@@ -164,6 +164,8 @@ export default function App() {
           ...item,
           status,
           reminderDate: item.reminder_date ?? item.reminderDate ?? undefined,
+          // Postgres returns "HH:MM:SS"; <input type="time"> wants "HH:MM".
+          reminderTime: item.reminder_time ? String(item.reminder_time).slice(0, 5) : (item.reminderTime ?? undefined),
           reminderMessage: item.reminder_message ?? item.reminderMessage ?? undefined,
           reminderSentAt: item.reminder_sent_at ?? item.reminderSentAt ?? undefined,
           currentSeason: item.current_season !== undefined && item.current_season !== null ? item.current_season : (item.currentSeason ?? 1),
@@ -301,9 +303,10 @@ export default function App() {
       if (item.totalSeasons !== undefined) dbItem.total_seasons = item.totalSeasons;
       if (item.totalEpisodes !== undefined) dbItem.total_episodes = item.totalEpisodes;
 
-      // Reminder fields: map to snake_case columns. Re-arm (sent_at = null) on every
-      // write so a newly set or changed date can fire again; a cleared date nulls out.
+      // Reminder fields -> snake_case columns. A null time means "no explicit time",
+      // which send-reminders resolves to the 09:00 default.
       dbItem.reminder_date = item.reminderDate || null;
+      dbItem.reminder_time = item.reminderTime || null;
       dbItem.reminder_message = item.reminderMessage || null;
       dbItem.reminder_sent_at = null;
 
@@ -312,6 +315,7 @@ export default function App() {
       delete dbItem.totalSeasons;
       delete dbItem.totalEpisodes;
       delete dbItem.reminderDate;
+      delete dbItem.reminderTime;
       delete dbItem.reminderMessage;
       delete dbItem.reminderSentAt;
 
@@ -382,17 +386,26 @@ export default function App() {
       if (item.totalSeasons !== undefined) dbItem.total_seasons = item.totalSeasons;
       if (item.totalEpisodes !== undefined) dbItem.total_episodes = item.totalEpisodes;
 
-      // Reminder fields: map to snake_case columns. Re-arm (sent_at = null) on every
-      // write so a newly set or changed date can fire again; a cleared date nulls out.
+      // Reminder fields -> snake_case columns. Only re-arm (sent_at = null) when the
+      // reminder itself actually changed. Re-arming on every save would make a
+      // reminder that already fired today go out a second time as soon as any
+      // unrelated field (a rating, a note) is edited on the same day.
+      const previousItem = mediaItems.find(i => i.id === item.id);
+      const reminderChanged =
+        (item.reminderDate || null) !== (previousItem?.reminderDate || null) ||
+        (item.reminderTime || null) !== (previousItem?.reminderTime || null);
+
       dbItem.reminder_date = item.reminderDate || null;
+      dbItem.reminder_time = item.reminderTime || null;
       dbItem.reminder_message = item.reminderMessage || null;
-      dbItem.reminder_sent_at = null;
+      dbItem.reminder_sent_at = reminderChanged ? null : (previousItem?.reminderSentAt || null);
 
       delete dbItem.currentSeason;
       delete dbItem.currentEpisode;
       delete dbItem.totalSeasons;
       delete dbItem.totalEpisodes;
       delete dbItem.reminderDate;
+      delete dbItem.reminderTime;
       delete dbItem.reminderMessage;
       delete dbItem.reminderSentAt;
 

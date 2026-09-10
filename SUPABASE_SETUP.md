@@ -113,15 +113,16 @@ create policy "Users can delete their own friendships" on friendships
 
 ## 4. Reminders & Web Push
 
-Reminders let a user pick a day per entry and receive a real push notification on
-that day — even when the app is closed. Delivery is driven by a daily `pg_cron`
-job that calls the `send-reminders` Edge Function.
+Reminders let a user pick a day **and time** per entry and receive a real push
+notification then — even when the app is closed. Delivery is driven by a recurring
+`pg_cron` job that calls the `send-reminders` Edge Function.
 
 ### A. `media_items` reminder columns
 
 ```sql
 alter table media_items
   add column if not exists reminder_date date,
+  add column if not exists reminder_time time,
   add column if not exists reminder_message text,
   add column if not exists reminder_sent_at timestamptz;
 
@@ -129,6 +130,12 @@ alter table media_items
 create index if not exists media_items_reminder_idx
   on media_items (reminder_date) where reminder_sent_at is null;
 ```
+
+`reminder_time` is intentionally **nullable**: NULL means "the user picked a date but
+no particular time", which `send-reminders` resolves to the **09:00** default. Storing
+NULL rather than a literal `09:00` keeps that intent visible and lets the default be
+changed later in one place. Rows created before this column existed simply read as NULL
+and therefore keep behaving as 09:00 reminders.
 
 ### B. `push_subscriptions` table
 
@@ -178,15 +185,18 @@ bypasses RLS to read all users' due reminders and subscriptions.
    (`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected automatically.)
 4. Deploy the function: `supabase functions deploy send-reminders`.
 
-### D. Daily scheduler (pg_cron + pg_net)
+### D. Scheduler (pg_cron + pg_net)
+
+Because reminders can be set to any time of day, the job runs **every 15 minutes**
+rather than once daily. The function resolves the current wall-clock time in
+Europe/Berlin itself, so DST needs no special handling. 15 minutes is also the
+delivery granularity: a reminder set for 09:00 arrives between 09:00 and 09:15.
 
 ```sql
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
 
--- 07:00 UTC daily → ~08:00/09:00 Europe/Berlin depending on DST. The function
--- itself computes "today" in Europe/Berlin, so the exact minute is not critical.
-select cron.schedule('send-reminders-daily', '0 7 * * *', $$
+select cron.schedule('send-reminders', '*/15 * * * *', $$
   select net.http_post(
     url := 'https://<project-ref>.supabase.co/functions/v1/send-reminders',
     headers := jsonb_build_object(
@@ -197,7 +207,16 @@ select cron.schedule('send-reminders-daily', '0 7 * * *', $$
 $$);
 ```
 
-Inspect scheduled runs via `select * from cron.job_run_details order by start_time desc;`.
+> [!IMPORTANT]
+> **Upgrading from the daily job:** the earlier setup registered a once-a-day job
+> called `send-reminders-daily`. Remove it first, otherwise it keeps running
+> alongside the new one:
+> ```sql
+> select cron.unschedule('send-reminders-daily');
+> ```
+
+Inspect scheduled runs via `select * from cron.job_run_details order by start_time desc;`,
+and the registered jobs via `select * from cron.job;`.
 
 ### E. iOS note
 

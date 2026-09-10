@@ -17,10 +17,30 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
 }
 
-/** Current date (YYYY-MM-DD) in the Europe/Berlin timezone. */
-function berlinToday(): string {
-  // en-CA formats as YYYY-MM-DD
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(new Date())
+/** Used when an entry has a reminder date but no explicit time. */
+const DEFAULT_REMINDER_TIME = '09:00'
+
+/** Current date (YYYY-MM-DD) and wall-clock time (HH:MM) in Europe/Berlin. */
+function berlinNow(): { date: string; time: string } {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Berlin',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23', // avoids "24:00" for midnight
+  }).formatToParts(new Date())
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '00'
+  return {
+    date: `${get('year')}-${get('month')}-${get('day')}`,
+    time: `${get('hour')}:${get('minute')}`,
+  }
+}
+
+/** "HH:MM:SS" | "HH:MM" | null -> "HH:MM", falling back to the default. */
+function effectiveTime(raw: unknown): string {
+  return raw ? String(raw).slice(0, 5) : DEFAULT_REMINDER_TIME
 }
 
 Deno.serve(async (req) => {
@@ -51,24 +71,32 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
 
-    const today = berlinToday()
+    const { date: today, time: nowTime } = berlinNow()
 
-    // 1. Due reminders (service role bypasses RLS → all users).
-    const { data: dueItems, error: dueErr } = await supabase
+    // 1. Reminders scheduled for today that have not gone out yet (service role
+    //    bypasses RLS → all users). Restricting to a single day means a reminder
+    //    from the past can never be resurrected, however often this runs.
+    const { data: todaysItems, error: dueErr } = await supabase
       .from('media_items')
-      .select('id, user_id, title, reminder_message')
+      .select('id, user_id, title, reminder_time, reminder_message')
       .eq('reminder_date', today)
       .is('reminder_sent_at', null)
     if (dueErr) throw dueErr
 
-    if (!dueItems || dueItems.length === 0) {
-      return new Response(JSON.stringify({ processed: 0, date: today }), {
+    // 2. Keep only those whose time has actually arrived. Zero-padded "HH:MM"
+    //    compares correctly as a string.
+    const dueItems = (todaysItems || []).filter(
+      (i) => effectiveTime(i.reminder_time) <= nowTime,
+    )
+
+    if (dueItems.length === 0) {
+      return new Response(JSON.stringify({ processed: 0, date: today, time: nowTime }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,
       })
     }
 
-    // 2. Load subscriptions for the affected users in one query.
+    // 3. Load subscriptions for the affected users in one query.
     const userIds = [...new Set(dueItems.map((i) => i.user_id))]
     const { data: subs, error: subErr } = await supabase
       .from('push_subscriptions')
@@ -87,7 +115,7 @@ Deno.serve(async (req) => {
     const deadSubscriptionIds: string[] = []
     const sentItemIds: string[] = []
 
-    // 3. Send a notification per due item to each of the user's devices.
+    // 4. Send a notification per due item to each of the user's devices.
     for (const item of dueItems) {
       const userSubs = subsByUser.get(item.user_id) || []
       const payload = JSON.stringify({
@@ -116,7 +144,7 @@ Deno.serve(async (req) => {
       sentItemIds.push(item.id)
     }
 
-    // 4. Mark items as sent (date-bound, so they won't fire again) and prune dead subs.
+    // 5. Mark items as sent (date-bound, so they won't fire again) and prune dead subs.
     if (sentItemIds.length > 0) {
       await supabase
         .from('media_items')
@@ -133,6 +161,7 @@ Deno.serve(async (req) => {
         sent,
         prunedSubscriptions: deadSubscriptionIds.length,
         date: today,
+        time: nowTime,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 },
     )
