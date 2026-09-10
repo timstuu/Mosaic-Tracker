@@ -185,6 +185,24 @@ bypasses RLS to read all users' due reminders and subscriptions.
    (`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected automatically.)
 4. Deploy the function: `supabase functions deploy send-reminders`.
 
+> [!WARNING]
+> **JWT verification must be off for this function.** Edge Functions require an
+> `Authorization` header by default, but `pg_cron`/`pg_net` cannot present a Supabase
+> JWT. With the default setting every scheduled run is rejected by the gateway with
+> `UNAUTHORIZED_NO_AUTH_HEADER` **before the function code runs** — no error surfaces
+> in the app, reminders simply never arrive.
+>
+> `supabase/config.toml` therefore contains:
+> ```toml
+> [functions.send-reminders]
+> verify_jwt = false
+> ```
+> If your CLI ignores that, deploy explicitly with
+> `supabase functions deploy send-reminders --no-verify-jwt`.
+>
+> The endpoint is then publicly reachable and guarded solely by the `x-cron-secret`
+> header the function checks itself, so **use a long, random `CRON_SECRET`**.
+
 ### D. Scheduler (pg_cron + pg_net)
 
 Because reminders can be set to any time of day, the job runs **every 15 minutes**

@@ -17,3 +17,10 @@ pop3_port = 54326
 
 [storage]
 file_size_limit = "50MiB"
+
+# send-reminders is invoked by pg_cron through pg_net, which cannot present a
+# Supabase JWT. The function authenticates the caller itself via the x-cron-secret
+# header, so the gateway's JWT check has to be off — otherwise every scheduled run
+# is rejected with UNAUTHORIZED_NO_AUTH_HEADER before the function code ever runs.
+[functions.send-reminders]
+verify_jwt = false
