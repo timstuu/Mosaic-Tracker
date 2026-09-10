@@ -24,6 +24,7 @@ import { BacklogRow } from './components/BacklogRow';
 import { Settings } from './components/Settings';
 import { FriendsView } from './components/FriendsView';
 import { TrackerRow } from './components/TrackerRow';
+import { ReminderBell } from './components/ReminderBell';
 
 type Page = 'tracker' | 'backlog' | 'analytics' | 'friends' | 'settings';
 
@@ -966,6 +967,7 @@ const dateB = new Date(b.watchDate || b.endDate || b.dateAdded || 0).getTime() |
                                     <span className="text-[10px] uppercase tracking-widest line-clamp-2">{item.title}</span>
                                   </div>
                                 )}
+                                <ReminderBell item={item} variant="overlay" />
                               </motion.div>
                             );
                           } catch (err) {

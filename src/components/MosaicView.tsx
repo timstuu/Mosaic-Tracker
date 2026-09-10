@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Star, Film, Tv, Book, Gamepad2 } from 'lucide-react';
 import { MediaItem, MediaType, MediaStatus } from '../types';
+import { ReminderBell } from './ReminderBell';
 
 interface MosaicViewProps {
   items: MediaItem[];
@@ -93,6 +94,8 @@ export const MosaicView: React.FC<MosaicViewProps> = React.memo(({ items, onItem
                           <span className="text-[10px] uppercase tracking-widest line-clamp-2">{item.title}</span>
                         </div>
                       )}
+                      {/* Top-right is taken by the DNF ribbon, so the bell sits left. */}
+                      <ReminderBell item={item} variant="overlay" />
                       {item.status === MediaStatus.DNF && (
                         <div className="absolute top-1 -right-7 w-24 md:top-2 md:-right-8 md:w-28 bg-[#6b1e1e]/95 text-white text-[8px] md:text-[10px] font-bold text-center py-0.5 md:py-1 shadow-md rotate-45 z-10 pointer-events-none uppercase tracking-widest">
                           DNF

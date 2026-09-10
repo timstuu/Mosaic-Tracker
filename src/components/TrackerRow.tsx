@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Film, Tv, Book, Gamepad2, Star } from 'lucide-react';
 import { MediaItem, MediaType, MediaStatus } from '../types';
+import { ReminderBell } from './ReminderBell';
 
 interface TrackerRowProps {
   item: MediaItem;
@@ -76,8 +77,9 @@ export const TrackerRow: React.FC<TrackerRowProps> = React.memo(({
         <div className="flex-1 md:contents">
           <div className="flex flex-col md:flex-row md:items-start md:py-1 gap-1 md:gap-4 md:pr-4">
             <div className="flex flex-col md:flex-row md:items-baseline gap-2">
-              <span className="text-sm font-medium text-white group-hover:text-white/90 transition-colors whitespace-normal break-words">
+              <span className="text-sm font-medium text-white group-hover:text-white/90 transition-colors whitespace-normal break-words inline-flex items-center gap-1.5">
                 {item.title}
+                <ReminderBell item={item} />
               </span>
               {item.status === MediaStatus.DNF && (
                 <span className="px-1.5 py-0.5 bg-red-900/30 border border-red-500/20 rounded text-[8px] font-extrabold text-red-400 tracking-widest uppercase inline-block w-fit">

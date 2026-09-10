@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { MediaItem, MediaType, MediaStatus } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
 import { Tv, Book, Gamepad2, Play, Edit2, CheckCircle } from 'lucide-react';
+import { ReminderBell } from './ReminderBell';
 
 interface ActiveMediaShelfProps {
   items: MediaItem[];
@@ -179,6 +180,9 @@ const ActiveCard: React.FC<{
             </div>
           )}
         </div>
+
+        {/* Top-left holds the episode badge, so the bell goes to the right. */}
+        <ReminderBell item={item} variant="overlay" overlayClassName="top-2 right-2 md:top-3 md:right-3" />
 
         {/* Typography Bottom Overlay */}
         <div className="absolute bottom-0 left-0 right-0 p-3 md:p-4 z-10 flex flex-col justify-end text-left">

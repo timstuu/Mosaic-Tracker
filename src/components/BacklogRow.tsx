@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { MediaItem, MediaType } from '../types';
+import { ReminderBell } from './ReminderBell';
 
 interface BacklogRowProps {
   item: MediaItem;
@@ -44,8 +45,11 @@ export const BacklogRow: React.FC<BacklogRowProps> = React.memo(({
 
       {/* Info - Pure typography, highly clean */}
       <div className="flex-1 min-w-0 pointer-events-none">
-        <div className="text-sm font-medium text-white group-hover:text-primary-accent transition-colors truncate">
-          {item.title}
+        <div className="flex items-center gap-1.5 min-w-0">
+          <div className="text-sm font-medium text-white group-hover:text-primary-accent transition-colors truncate">
+            {item.title}
+          </div>
+          <ReminderBell item={item} />
         </div>
         <div className="flex items-center gap-3 mt-1">
           {(item.platform || item.console) && (
