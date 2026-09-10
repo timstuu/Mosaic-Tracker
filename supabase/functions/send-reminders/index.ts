@@ -123,9 +123,11 @@ Deno.serve(async (req) => {
     // 4. Send a notification per due item to each of the user's devices.
     for (const item of dueItems) {
       const userSubs = subsByUser.get(item.user_id) || []
+      // iOS already appends "from <PWA name>" to the title, so repeating "Mosaic"
+      // here wastes the most prominent line. The entry title is the useful part.
       const payload = JSON.stringify({
-        title: 'Mosaic Reminder',
-        body: item.reminder_message || item.title,
+        title: item.title,
+        body: item.reminder_message || 'Reminder',
         url: '/Mosaic-Tracker/',
         tag: `reminder-${item.id}`,
       })

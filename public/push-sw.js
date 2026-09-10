@@ -13,7 +13,7 @@ self.addEventListener('push', (event) => {
     payload = { body: event.data && event.data.text ? event.data.text() : '' };
   }
 
-  const title = payload.title || 'Mosaic Reminder';
+  const title = payload.title || 'Reminder';
   const options = {
     body: payload.body || 'You have a reminder.',
     icon: payload.icon || './icons/icon-192.png',
