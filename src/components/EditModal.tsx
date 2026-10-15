@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Film, Tv, Book, Gamepad2, Star, Calendar, Monitor, Cpu, Sparkles, Bell } from 'lucide-react';
+import { OptionSelect, TagInput } from './SuggestInputs';
 import { MediaType, MediaStatus, MediaItem } from '../types';
 import { fetchMediaPoster, fetchMediaSynopsis, fetchSimilarRecommendations, TMDbRecommendation } from '../services/tmdbService';
 import { fetchBookCover, fetchBookSynopsis } from '../services/bookService';
@@ -14,9 +15,12 @@ interface EditModalProps {
   onDelete: (id: string) => void;
   onAddToBacklog?: (item: { title: string; type: MediaType; imageUrl?: string }) => void;
   onTagClick?: (tag: string) => void;
+  platformOptions: string[];
+  consoleOptions: string[];
+  tagOptions: string[];
 }
 
-export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onDelete, onAddToBacklog, onTagClick }) => {
+export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onDelete, onAddToBacklog, onTagClick, platformOptions, consoleOptions, tagOptions }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [type, setType] = useState<MediaType>(item.type);
   const [title, setTitle] = useState(item.title);
@@ -877,13 +881,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                       <label className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-widest mb-2">
                         <Monitor size={12} /> Platform
                       </label>
-                      <input
-                        type="text"
-                        value={platform}
-                        onChange={(e) => setPlatform(e.target.value)}
-                        placeholder="Netflix, HBO..."
-                        className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
-                      />
+                      <OptionSelect value={platform} onChange={setPlatform} options={platformOptions} placeholder="Plattform wählen..." emptyLabel="Keine Plattform" />
                     </div>
                   </div>
                 )}
@@ -1016,13 +1014,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                     <label className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-widest mb-2">
                       <Cpu size={12} /> Console
                     </label>
-                    <input
-                      type="text"
-                      value={consoleName}
-                      onChange={(e) => setConsoleName(e.target.value)}
-                      placeholder="PS5, Xbox, Switch..."
-                      className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
-                    />
+                    <OptionSelect value={consoleName} onChange={setConsoleName} options={consoleOptions} placeholder="Konsole wählen..." emptyLabel="Keine Konsole" />
                   </div>
                 )}
 
@@ -1045,13 +1037,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
 
             <div>
               <label className="block text-xs font-bold text-white uppercase tracking-widest mb-2">Tags (comma separated)</label>
-              <input
-                type="text"
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
-                placeholder="Action, Sci-Fi, Favorite..."
-                className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
-              />
+              <TagInput value={tags} onChange={setTags} options={tagOptions} placeholder="Action, Sci-Fi, Favorite..." />
             </div>
 
             <div>

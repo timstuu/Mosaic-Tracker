@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Film, Tv, Book, Gamepad2, Star, Calendar, Monitor, Cpu, Bell } from 'lucide-react';
+import { OptionSelect, TagInput } from './SuggestInputs';
 import { MediaType, MediaItem, MediaStatus } from '../types';
 import { searchTVShows, fetchTVShowDetails, searchMovies } from '../services/tmdbService';
 import { searchBooks } from '../services/bookService';
@@ -9,6 +10,9 @@ import { searchGames } from '../services/gameService';
 interface MediaFormProps {
   onClose: () => void;
   onSave: (item: Partial<MediaItem>) => void;
+  platformOptions: string[];
+  consoleOptions: string[];
+  tagOptions: string[];
 }
 
 interface UnifiedSuggestion {
@@ -19,7 +23,7 @@ interface UnifiedSuggestion {
   rawData: any;
 }
 
-export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
+export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave, platformOptions, consoleOptions, tagOptions }) => {
   const [type, setType] = useState<MediaType>(MediaType.MOVIE);
   const [title, setTitle] = useState('');
   const [rating, setRating] = useState(0);
@@ -504,13 +508,7 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
                     <label className="flex items-center gap-2 text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">
                       <Monitor size={12} /> Platform
                     </label>
-                    <input
-                      type="text"
-                      value={platform}
-                      onChange={(e) => setPlatform(e.target.value)}
-                      placeholder="Netflix, HBO..."
-                      className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
-                    />
+                    <OptionSelect value={platform} onChange={setPlatform} options={platformOptions} placeholder="Plattform wählen..." emptyLabel="Keine Plattform" />
                   </div>
                 )}
 
@@ -519,13 +517,7 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
                     <label className="flex items-center gap-2 text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">
                       <Cpu size={12} /> Console
                     </label>
-                    <input
-                      type="text"
-                      value={consoleName}
-                      onChange={(e) => setConsoleName(e.target.value)}
-                      placeholder="PS5, Xbox, Switch..."
-                      className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
-                    />
+                    <OptionSelect value={consoleName} onChange={setConsoleName} options={consoleOptions} placeholder="Konsole wählen..." emptyLabel="Keine Konsole" />
                   </div>
                 )}
               </motion.div>
@@ -533,13 +525,7 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave }) => {
 
             <div>
               <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Tags (comma separated)</label>
-              <input
-                type="text"
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
-                placeholder="Action, Sci-Fi, Favorite..."
-                className="w-full bg-app-bg border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary-accent/50 transition-colors"
-              />
+              <TagInput value={tags} onChange={setTags} options={tagOptions} placeholder="Action, Sci-Fi, Favorite..." />
             </div>
 
             <div>
