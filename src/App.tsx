@@ -20,6 +20,7 @@ import { ToastContainer, ToastMessage } from './components/Toast';
 
 import { MosaicView } from './components/MosaicView';
 import { MediaForm } from './components/MediaForm';
+import { buildPlatformOptions, buildConsoleOptions, buildTagOptions } from './components/SuggestInputs';
 import { BacklogRow } from './components/BacklogRow';
 import { Settings } from './components/Settings';
 import { FriendsView } from './components/FriendsView';
@@ -610,6 +611,10 @@ export default function App() {
     reader.readAsText(file);
   };
 
+  const platformOptions = useMemo(() => buildPlatformOptions(mediaItems), [mediaItems]);
+  const consoleOptions = useMemo(() => buildConsoleOptions(mediaItems), [mediaItems]);
+  const tagOptions = useMemo(() => buildTagOptions(mediaItems), [mediaItems]);
+
   const filteredAndSortedItems = useMemo(() => {
     if (!searchQuery.trim()) {
       return [...mediaItems].sort((a, b) => {
@@ -1164,6 +1169,9 @@ const dateB = new Date(b.watchDate || b.endDate || b.dateAdded || 0).getTime() |
             onDelete={handleDeleteMedia}
             onAddToBacklog={handleAddToBacklog}
             onTagClick={handleTagClick}
+            platformOptions={platformOptions}
+            consoleOptions={consoleOptions}
+            tagOptions={tagOptions}
           />
         )}
       </AnimatePresence>
@@ -1176,6 +1184,9 @@ const dateB = new Date(b.watchDate || b.endDate || b.dateAdded || 0).getTime() |
               handleSaveMedia(item);
               setIsAddModalOpen(false);
             }} 
+            platformOptions={platformOptions}
+            consoleOptions={consoleOptions}
+            tagOptions={tagOptions}
           />
         )}
       </AnimatePresence>
