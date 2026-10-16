@@ -1006,6 +1006,15 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                         </div>
                       </div>
                     )}
+
+                    {type === MediaType.SHOW && (
+                      <div>
+                        <label className="flex items-center gap-2 text-xs font-bold text-white uppercase tracking-widest mb-2">
+                          <Monitor size={12} /> Platform
+                        </label>
+                        <OptionSelect value={platform} onChange={setPlatform} options={platformOptions} placeholder="Plattform wählen..." emptyLabel="Keine Plattform" />
+                      </div>
+                    )}
                   </div>
                 )}
 
