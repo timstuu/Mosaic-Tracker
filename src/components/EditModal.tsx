@@ -7,6 +7,7 @@ import { fetchMediaPoster, fetchSimilarRecommendations, TMDbRecommendation } fro
 import { fetchBookCover } from '../services/bookService';
 import { fetchGameCover } from '../services/gameService';
 import { enrichWithSynopsis } from '../services/synopsisService';
+import { WatchProviders } from './WatchProviders';
 
 interface EditModalProps {
   item: MediaItem;
@@ -466,6 +467,9 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                   </div>
                 </div>
               )}
+
+              {/* Streaming availability (movies, shows, documentaries) */}
+              <WatchProviders title={item.title} type={item.type} />
 
               {/* Notes (Always show) */}
               <div className="w-full">
