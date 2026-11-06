@@ -248,3 +248,64 @@ export async function fetchSimilarRecommendations(
 }
 
 
+
+export interface WatchProvider {
+  id: number;
+  name: string;
+  logoUrl?: string;
+}
+
+export interface WatchProviderResult {
+  providers: WatchProvider[];
+  /** TMDB page that lists all offers for this title (data by JustWatch). */
+  link?: string;
+}
+
+const LOGO_BASE_URL = 'https://image.tmdb.org/t/p/w92';
+
+/**
+ * Streaming services (subscription / "flatrate" only) where a title is available in a region.
+ * Data comes from TMDB's watch provider endpoint, which is powered by JustWatch.
+ * Documentaries are searched as movies first and as TV series if no movie matches.
+ */
+export async function fetchWatchProviders(
+  title: string,
+  type: 'movie' | 'show' | 'documentary',
+  region = 'DE'
+): Promise<WatchProviderResult | undefined> {
+  if (!TMDB_API_KEY || !title.trim()) return undefined;
+
+  const searchOrder: Array<'movie' | 'tv'> =
+    type === 'show' ? ['tv'] : type === 'documentary' ? ['movie', 'tv'] : ['movie'];
+
+  try {
+    for (const searchType of searchOrder) {
+      const searchResponse = await fetch(
+        `${BASE_URL}/search/${searchType}?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(title)}`
+      );
+      if (!searchResponse.ok) throw new Error(`TMDB API error: ${searchResponse.status}`);
+      const match = (await searchResponse.json()).results?.[0];
+      if (!match) continue;
+
+      const providerResponse = await fetch(
+        `${BASE_URL}/${searchType}/${match.id}/watch/providers?api_key=${TMDB_API_KEY}`
+      );
+      if (!providerResponse.ok) throw new Error(`TMDB API error: ${providerResponse.status}`);
+      const regionData = (await providerResponse.json()).results?.[region];
+
+      const providers: WatchProvider[] = [...(regionData?.flatrate || [])]
+        .sort((a: any, b: any) => (a.display_priority ?? 999) - (b.display_priority ?? 999))
+        .map((p: any) => ({
+          id: p.provider_id,
+          name: p.provider_name,
+          logoUrl: p.logo_path ? `${LOGO_BASE_URL}${p.logo_path}` : undefined,
+        }));
+
+      return { providers, link: regionData?.link };
+    }
+    return { providers: [] };
+  } catch (error) {
+    console.error('Error fetching watch providers from TMDB:', error);
+    return undefined;
+  }
+}
