@@ -13,6 +13,7 @@ import { Analytics } from './components/Analytics';
 import { ImportModal } from './components/ImportModal';
 import { EditModal } from './components/EditModal';
 import { MediaItem, MediaType, Challenge, MediaStatus } from './types';
+import { enrichWithSynopsis } from './services/synopsisService';
 import { Star, Search, X, LayoutGrid, BarChart3, Settings as SettingsIcon, Trash2, Database, Shield, Bookmark, ExternalLink, Film, Tv, Book, Gamepad2, Plus, Edit2, Trophy, LogOut, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChallengeModal } from './components/ChallengeModal';
@@ -290,6 +291,24 @@ export default function App() {
     }
   };
 
+  // Adds summary + genre tags to a freshly inserted item without blocking the add.
+  // If no synopsis is found, the item stays as it is and no error is shown.
+  const enrichItemInBackground = async (id: string, title: string, type: MediaType, notes?: string, tags?: string) => {
+    if (!title || !type) return;
+    try {
+      const enriched = await enrichWithSynopsis(title, type, notes, tags);
+      if (enriched.notes === (notes || '') && enriched.tags === (tags || '')) return;
+      const { error } = await supabase
+        .from('media_items')
+        .update({ notes: enriched.notes, tags: enriched.tags })
+        .eq('id', id);
+      if (error) throw error;
+      fetchMedia();
+    } catch (err) {
+      console.warn('Auto summary skipped:', err);
+    }
+  };
+
   const handleSaveMedia = async (item: Partial<MediaItem>) => {
     if (!isSupabaseConfigured) {
       addToast('Please configure Supabase first.', 'error');
@@ -332,6 +351,7 @@ export default function App() {
       if (insertData && insertData[0]) {
         setNewlyAddedItemId(insertData[0].id);
         setTimeout(() => setNewlyAddedItemId(null), 3000);
+        enrichItemInBackground(insertData[0].id, item.title || '', item.type as MediaType, item.notes, item.tags);
       }
       addToast(`Successfully added "${item.title}".`, 'success');
       fetchMedia();
@@ -366,6 +386,7 @@ export default function App() {
       if (insertData && insertData[0]) {
         setNewlyAddedItemId(insertData[0].id);
         setTimeout(() => setNewlyAddedItemId(null), 3000);
+        enrichItemInBackground(insertData[0].id, item.title, item.type);
       }
       addToast(`Added "${item.title}" to backlog.`, 'success');
       fetchMedia();

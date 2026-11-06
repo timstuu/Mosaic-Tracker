@@ -5,7 +5,7 @@ import {
   AreaChart, Area 
 } from 'recharts';
 import { MediaItem, MediaType, Challenge, MediaStatus } from '../types';
-import { Star, TrendingUp, LayoutGrid, Award, Trophy, Plus, Trash2, Calendar, Target, Film, Tv, Book, Gamepad2 } from 'lucide-react';
+import { Star, TrendingUp, Award, Trophy, Plus, Trash2, Calendar, Target, Film, Tv, Book, Gamepad2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface AnalyticsProps {
@@ -16,7 +16,70 @@ interface AnalyticsProps {
   onItemClick?: (item: MediaItem) => void;
 }
 
-const COLORS = ['#DFD0B8', '#393E46', '#5C8374', '#9EC8B9', '#1B262C'];
+const TYPE_ORDER: MediaType[] = [MediaType.MOVIE, MediaType.SHOW, MediaType.DOCUMENTARY, MediaType.BOOK, MediaType.GAME];
+
+const TYPE_LABELS: Record<MediaType, string> = {
+  [MediaType.MOVIE]: 'Movies',
+  [MediaType.SHOW]: 'Shows',
+  [MediaType.DOCUMENTARY]: 'Documentaries',
+  [MediaType.BOOK]: 'Books',
+  [MediaType.GAME]: 'Games',
+};
+
+// One fixed color per type, so both distribution charts use the same colors.
+const TYPE_COLORS: Record<MediaType, string> = {
+  [MediaType.MOVIE]: '#DFD0B8',
+  [MediaType.SHOW]: '#5C8374',
+  [MediaType.DOCUMENTARY]: '#9EC8B9',
+  [MediaType.BOOK]: '#8B7E6A',
+  [MediaType.GAME]: '#576D87',
+};
+
+const TYPE_ICONS: Record<MediaType, React.ReactNode> = {
+  [MediaType.MOVIE]: <Film size={16} />,
+  [MediaType.SHOW]: <Tv size={16} />,
+  [MediaType.DOCUMENTARY]: <Film size={16} />,
+  [MediaType.BOOK]: <Book size={16} />,
+  [MediaType.GAME]: <Gamepad2 size={16} />,
+};
+
+interface DistributionEntry {
+  type: MediaType;
+  name: string;
+  value: number;
+  items: MediaItem[];
+}
+
+interface DrillDown {
+  title: string;
+  items: MediaItem[];
+  isBacklog: boolean;
+}
+
+const monthLabelFormatter = new Intl.DateTimeFormat('en-US', { month: 'short', year: '2-digit' });
+const monthTitleFormatter = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' });
+
+const completionDate = (item: MediaItem) => item.watchDate || item.endDate || item.dateAdded;
+
+const monthKey = (year: number, month: number) => `${year}-${String(month + 1).padStart(2, '0')}`;
+
+// Reads "YYYY-MM" straight from date strings, so a date like "2026-01-01" never shifts month by time zone.
+const monthKeyOf = (raw?: string) => {
+  if (!raw) return '';
+  const match = /^(\d{4})-(\d{2})/.exec(raw);
+  if (match) return `${match[1]}-${match[2]}`;
+  const date = new Date(raw);
+  return isNaN(date.getTime()) ? '' : monthKey(date.getFullYear(), date.getMonth());
+};
+
+const sortByDateDesc = (list: MediaItem[], getDate: (item: MediaItem) => string | undefined) =>
+  [...list].sort((a, b) => (new Date(getDate(b) || 0).getTime() || 0) - (new Date(getDate(a) || 0).getTime() || 0));
+
+const formatDate = (raw?: string) => {
+  if (!raw) return '';
+  const date = new Date(raw);
+  return isNaN(date.getTime()) ? '' : date.toLocaleDateString();
+};
 
 import { MosaicView } from './MosaicView';
 import { X } from 'lucide-react';
@@ -24,59 +87,73 @@ import { X } from 'lucide-react';
 export const Analytics: React.FC<AnalyticsProps> = ({ items, challenges, onAddChallenge, onDeleteChallenge, onItemClick }) => {
   const [selectedChallenge, setSelectedChallenge] = useState<any>(null);
 
+  const [drillDown, setDrillDown] = useState<DrillDown | null>(null);
+
+  const openDrillDown = (title: string, list: MediaItem[], isBacklog: boolean) => {
+    setDrillDown({ title: `${title} (${list.length})`, items: list, isBacklog });
+  };
+
   const stats = useMemo(() => {
-    const completedItems = items.filter(item => {
+    const completedItems = sortByDateDesc(items.filter(item => {
       if (item.status !== MediaStatus.COMPLETED) return false;
       if ([MediaType.SHOW, MediaType.BOOK, MediaType.GAME].includes(item.type)) {
         return !!item.endDate;
       }
       return !!item.watchDate;
+    }), completionDate);
+
+    const backlogItems = sortByDateDesc(
+      items.filter(item => item.status === MediaStatus.PLANNED),
+      item => item.dateAdded,
+    );
+
+    if (completedItems.length === 0 && backlogItems.length === 0) return null;
+
+    // 1. Media Type Distribution (completed and backlog)
+    const distributionOf = (list: MediaItem[]): DistributionEntry[] =>
+      TYPE_ORDER.map(type => ({
+        type,
+        name: TYPE_LABELS[type],
+        value: list.filter(item => item.type === type).length,
+        items: list.filter(item => item.type === type),
+      })).filter(d => d.value > 0);
+
+    const completedDistribution = distributionOf(completedItems);
+    const backlogDistribution = distributionOf(backlogItems);
+
+    // 2. Rating Distribution (completed items with 1-5 stars)
+    const ratingDistribution = [1, 2, 3, 4, 5].map(stars => {
+      const ratingItems = completedItems.filter(item => item.rating === stars);
+      return {
+        stars,
+        rating: `${stars} ${stars === 1 ? 'Star' : 'Stars'}`,
+        count: ratingItems.length,
+        items: ratingItems,
+      };
     });
 
-    if (completedItems.length === 0) return null;
-
-    // 1. Media Type Distribution
-    const typeDistribution = Object.values(MediaType).map(type => ({
-      name: type.charAt(0).toUpperCase() + type.slice(1),
-      value: completedItems.filter(item => item.type === type).length
-    })).filter(d => d.value > 0);
-
-    // 2. Rating Distribution
-    const ratingDistribution = [1, 2, 3, 4, 5].map(rating => ({
-      rating: `${rating} Stars`,
-      count: completedItems.filter(item => item.rating === rating).length
-    }));
-
-    // 3. Activity by Month
-    const activityByMonth: Record<string, number> = {};
-    completedItems.forEach(item => {
-      const date = new Date(item.watchDate || item.endDate || item.dateAdded);
-      const key = date.toLocaleString('default', { month: 'short' });
-      activityByMonth[key] = (activityByMonth[key] || 0) + 1;
+    // 3. Activity over the last 12 months, including the current month.
+    // Months are keyed by year AND month so January 2025 and January 2026 stay apart.
+    const now = new Date();
+    const activityData = Array.from({ length: 12 }, (_, i) => {
+      const monthStart = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1);
+      const key = monthKey(monthStart.getFullYear(), monthStart.getMonth());
+      const monthItems = completedItems.filter(item => monthKeyOf(completionDate(item)) === key);
+      return {
+        name: monthLabelFormatter.format(monthStart),
+        fullName: monthTitleFormatter.format(monthStart),
+        count: monthItems.length,
+        items: monthItems,
+      };
     });
-    
-    const activityData = Object.entries(activityByMonth).map(([name, count]) => ({
-      name,
-      count
-    }));
-
-    // 4. Summary Stats
-    const totalItems = completedItems.length;
-    
-    const ratedItems = completedItems.filter(item => item.rating > 0);
-    const avgRating = ratedItems.length > 0 
-      ? (ratedItems.reduce((acc, item) => acc + item.rating, 0) / ratedItems.length).toFixed(1)
-      : '0.0';
-      
-    const topType = [...typeDistribution].sort((a, b) => b.value - a.value)[0]?.name || 'N/A';
 
     return {
-      typeDistribution,
+      completedDistribution,
+      backlogDistribution,
+      completedTotal: completedItems.length,
+      backlogTotal: backlogItems.length,
       ratingDistribution,
       activityData,
-      totalItems,
-      avgRating,
-      topType
     };
   }, [items]);
 
@@ -119,6 +196,71 @@ export const Analytics: React.FC<AnalyticsProps> = ({ items, challenges, onAddCh
     });
   }, [challenges, items]);
 
+  const renderDistribution = (
+    title: string,
+    data: DistributionEntry[],
+    total: number,
+    statusLabel: string,
+    emptyText: string,
+  ) => (
+    <div className="bg-secondary-accent border border-white/5 rounded-3xl p-6 shadow-xl">
+      <div className="flex items-baseline justify-between mb-6">
+        <h3 className="text-xs font-bold text-white uppercase tracking-widest">{title}</h3>
+        <span className="text-[10px] text-zinc-400 font-mono">{total}</span>
+      </div>
+      {data.length === 0 ? (
+        <div className="h-[250px] flex items-center justify-center">
+          <p className="text-zinc-400 font-serif italic text-sm">{emptyText}</p>
+        </div>
+      ) : (
+        <>
+          <div className="h-[250px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={data}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="value"
+                  className="cursor-pointer focus:outline-none"
+                  onClick={(_: unknown, index: number) => {
+                    const entry = data[index];
+                    if (entry) openDrillDown(`${entry.name} · ${statusLabel}`, entry.items, statusLabel === 'Backlog');
+                  }}
+                >
+                  {data.map(entry => (
+                    <Cell key={entry.type} fill={TYPE_COLORS[entry.type]} stroke="none" />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{ backgroundColor: '#1B262C', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+                  itemStyle={{ color: '#DFD0B8' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="flex flex-wrap justify-center gap-2 mt-4">
+            {data.map(entry => (
+              <button
+                key={entry.type}
+                type="button"
+                onClick={() => openDrillDown(`${entry.name} · ${statusLabel}`, entry.items, statusLabel === 'Backlog')}
+                className="flex items-center gap-2 px-2.5 py-1 rounded-full hover:bg-white/5 transition-colors"
+              >
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: TYPE_COLORS[entry.type] }} />
+                <span className="text-[10px] text-zinc-400 uppercase tracking-widest">{entry.name}</span>
+                <span className="text-[10px] text-zinc-500 font-mono">{entry.value}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+
   const renderOverview = () => {
     if (!stats) {
       return (
@@ -133,67 +275,24 @@ export const Analytics: React.FC<AnalyticsProps> = ({ items, challenges, onAddCh
 
     return (
       <div className="space-y-8">
-        {/* Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { label: 'Total Tracked', value: stats.totalItems, icon: <LayoutGrid size={16} /> },
-            { label: 'Avg Rating', value: stats.avgRating, icon: <Star size={16} /> },
-            { label: 'Top Category', value: stats.topType, icon: <Award size={16} /> },
-            { label: 'Growth', value: '+12%', icon: <TrendingUp size={16} /> },
-          ].map((stat, i) => (
-            <div key={i} className="bg-secondary-accent border border-white/5 rounded-2xl p-4 shadow-lg">
-              <div className="flex items-center gap-2 text-white mb-1">
-                {stat.icon}
-                <span className="text-[10px] font-bold uppercase tracking-widest">{stat.label}</span>
-              </div>
-              <div className="text-xl font-serif italic text-white">{stat.value}</div>
-            </div>
-          ))}
-        </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {/* Type Distribution */}
-          <div className="bg-secondary-accent border border-white/5 rounded-3xl p-6 shadow-xl">
-            <h3 className="text-xs font-bold text-white uppercase tracking-widest mb-6">Media Distribution</h3>
-            <div className="h-[250px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={stats.typeDistribution}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {stats.typeDistribution.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#1B262C', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
-                    itemStyle={{ color: '#DFD0B8' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex flex-wrap justify-center gap-4 mt-4">
-              {stats.typeDistribution.map((entry, index) => (
-                <div key={entry.name} className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
-                  <span className="text-[10px] text-zinc-400 uppercase tracking-widest">{entry.name}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          {renderDistribution('Media Distribution · Completed', stats.completedDistribution, stats.completedTotal, 'Completed', 'Nothing completed yet.')}
+          {renderDistribution('Media Distribution · Backlog', stats.backlogDistribution, stats.backlogTotal, 'Backlog', 'Your backlog is empty.')}
 
           {/* Activity Chart */}
-          <div className="bg-secondary-accent border border-white/5 rounded-3xl p-6 shadow-xl">
-            <h3 className="text-xs font-bold text-white uppercase tracking-widest mb-6">Activity Trend</h3>
+          <div className="bg-secondary-accent border border-white/5 rounded-3xl p-6 shadow-xl md:col-span-2">
+            <h3 className="text-xs font-bold text-white uppercase tracking-widest mb-6">Activity Trend · Last 12 Months</h3>
             <div className="h-[250px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={stats.activityData}>
+                <AreaChart
+                  data={stats.activityData}
+                  className="cursor-pointer"
+                  onClick={(state: any) => {
+                    const index = Number(state?.activeTooltipIndex ?? state?.activeIndex);
+                    const month = Number.isInteger(index) ? stats.activityData[index] : undefined;
+                    if (month && month.count > 0) openDrillDown(month.fullName, month.items, false);
+                  }}
+                >
                   <defs>
                     <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#DFD0B8" stopOpacity={0.3}/>
@@ -205,11 +304,14 @@ export const Analytics: React.FC<AnalyticsProps> = ({ items, challenges, onAddCh
                     dataKey="name" 
                     axisLine={false} 
                     tickLine={false} 
+                    interval="preserveStartEnd"
+                    padding={{ left: 12, right: 12 }}
                     tick={{ fill: '#71717a', fontSize: 10 }} 
                   />
                   <YAxis 
                     axisLine={false} 
                     tickLine={false} 
+                    allowDecimals={false}
                     tick={{ fill: '#71717a', fontSize: 10 }} 
                   />
                   <Tooltip 
@@ -223,6 +325,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ items, challenges, onAddCh
                     fillOpacity={1} 
                     fill="url(#colorCount)" 
                     strokeWidth={2}
+                    activeDot={{ r: 6 }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -245,6 +348,7 @@ export const Analytics: React.FC<AnalyticsProps> = ({ items, challenges, onAddCh
                   <YAxis 
                     axisLine={false} 
                     tickLine={false} 
+                    allowDecimals={false}
                     tick={{ fill: '#71717a', fontSize: 10 }} 
                   />
                   <Tooltip 
@@ -257,6 +361,11 @@ export const Analytics: React.FC<AnalyticsProps> = ({ items, challenges, onAddCh
                     fill="#DFD0B8" 
                     radius={[4, 4, 0, 0]} 
                     barSize={40}
+                    className="cursor-pointer"
+                    onClick={(_: unknown, index: number) => {
+                      const bucket = stats.ratingDistribution[index];
+                      if (bucket && bucket.count > 0) openDrillDown(bucket.rating, bucket.items, false);
+                    }}
                   />
                 </BarChart>
               </ResponsiveContainer>
@@ -435,6 +544,88 @@ export const Analytics: React.FC<AnalyticsProps> = ({ items, challenges, onAddCh
                   <div className="py-20 text-center">
                     <p className="text-zinc-400 font-serif italic">No entries completed for this challenge yet.</p>
                   </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {drillDown && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDrillDown(null)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-2xl max-h-[85vh] bg-app-bg border border-white/10 rounded-3xl shadow-2xl flex flex-col overflow-hidden"
+            >
+              <div className="flex items-center justify-between gap-4 p-5 sm:p-6 border-b border-white/10 bg-secondary-accent/50">
+                <h2 className="text-lg sm:text-xl font-bold text-[#e7e7e7] font-sans tracking-tight">{drillDown.title}</h2>
+                <button
+                  onClick={() => setDrillDown(null)}
+                  className="p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-full transition-colors shrink-0"
+                  title="Close"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-2 sm:p-3 custom-scrollbar">
+                {drillDown.items.length === 0 ? (
+                  <div className="py-16 text-center">
+                    <p className="text-zinc-400 font-serif italic">No entries here yet.</p>
+                  </div>
+                ) : (
+                  <ul className="divide-y divide-white/5">
+                    {drillDown.items.map(item => {
+                      const dateText = formatDate(drillDown.isBacklog ? item.dateAdded : completionDate(item));
+                      return (
+                        <li key={item.id}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDrillDown(null);
+                              onItemClick?.(item);
+                            }}
+                            className="w-full flex items-center gap-3 sm:gap-4 p-2 sm:p-3 rounded-2xl text-left hover:bg-white/5 transition-colors"
+                          >
+                            <div className="w-10 h-14 shrink-0 rounded-lg overflow-hidden bg-secondary-accent flex items-center justify-center text-zinc-500">
+                              {item.imageUrl ? (
+                                <img src={item.imageUrl} alt="" loading="lazy" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
+                              ) : (
+                                TYPE_ICONS[item.type]
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="text-sm font-semibold text-white/90 truncate">{item.title}</div>
+                              <div className="text-[11px] text-zinc-500 mt-0.5">
+                                {drillDown.isBacklog ? 'Added ' : ''}{dateText}
+                              </div>
+                            </div>
+                            {item.rating > 0 && (
+                              <div className="flex items-center gap-0.5 shrink-0" aria-label={`${item.rating} of 5 stars`}>
+                                {Array.from({ length: 5 }, (_, i) => (
+                                  <Star
+                                    key={i}
+                                    size={11}
+                                    className={i < item.rating ? 'text-primary-accent fill-primary-accent' : 'text-zinc-700'}
+                                  />
+                                ))}
+                              </div>
+                            )}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 )}
               </div>
             </motion.div>

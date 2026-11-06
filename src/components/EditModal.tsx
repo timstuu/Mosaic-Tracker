@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Film, Tv, Book, Gamepad2, Star, Calendar, Monitor, Cpu, Sparkles, Bell } from 'lucide-react';
+import { X, Film, Tv, Book, Gamepad2, Star, Calendar, Monitor, Cpu, Bell } from 'lucide-react';
 import { OptionSelect, TagInput } from './SuggestInputs';
 import { MediaType, MediaStatus, MediaItem } from '../types';
-import { fetchMediaPoster, fetchMediaSynopsis, fetchSimilarRecommendations, TMDbRecommendation } from '../services/tmdbService';
-import { fetchBookCover, fetchBookSynopsis } from '../services/bookService';
-import { fetchGameCover, fetchGameSynopsis } from '../services/gameService';
-import { supabase } from '../lib/supabase';
+import { fetchMediaPoster, fetchSimilarRecommendations, TMDbRecommendation } from '../services/tmdbService';
+import { fetchBookCover } from '../services/bookService';
+import { fetchGameCover } from '../services/gameService';
+import { enrichWithSynopsis } from '../services/synopsisService';
 
 interface EditModalProps {
   item: MediaItem;
@@ -41,75 +41,7 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
   const [isDnf, setIsDnf] = useState(item.status === MediaStatus.DNF);
 
   const [addedIds, setAddedIds] = useState<number[]>([]);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [summaryAdded, setSummaryAdded] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-  const handleGetSummary = async () => {
-    setIsAnalyzing(true);
-    setErrorMsg(null);
-    try {
-      const synopsis = type === MediaType.BOOK
-        ? await fetchBookSynopsis(title)
-        : type === MediaType.GAME
-        ? await fetchGameSynopsis(title)
-        : await fetchMediaSynopsis(title, type as 'movie' | 'show' | 'documentary');
-
-      if (!synopsis || !synopsis.summary) {
-        throw new Error('No synopsis found for this title.');
-      }
-
-      const genresList = synopsis.genres;
-      const summaryText = synopsis.summary;
-
-      // 1. Merge genres into tags if any found
-      let updatedTags = tags;
-      if (genresList.length > 0) {
-        const existingTagsList = tags ? tags.split(',').map(t => t.trim()).filter(Boolean) : [];
-        const mergedTagsList = [...existingTagsList];
-        genresList.forEach(genre => {
-          if (!mergedTagsList.some(t => t.toLowerCase() === genre.toLowerCase())) {
-            mergedTagsList.push(genre);
-          }
-        });
-        updatedTags = mergedTagsList.join(', ');
-        setTags(updatedTags);
-      }
-
-      // 2. Format the notes with the summary appended or set
-      let updatedNotes = notes;
-      const summarySnippet = `Summary:\n${summaryText}`;
-      if (notes && notes.trim().length > 0) {
-        updatedNotes = `${notes.trim()}\n\n${summarySnippet}`;
-      } else {
-        updatedNotes = summarySnippet;
-      }
-      setNotes(updatedNotes);
-      setSummaryAdded(true);
-
-      // 3. Update Supabase
-      if (item.id && supabase) {
-        const { error: dbError } = await supabase
-          .from('media_items')
-          .update({
-            notes: updatedNotes,
-            tags: updatedTags
-          })
-          .eq('id', item.id);
-
-        if (dbError) {
-          console.error('Failed to update Supabase notes and tags with synopsis:', dbError);
-          setErrorMsg('Synced locally, but database save failed.');
-        }
-      }
-    } catch (err: any) {
-      console.error('Error generating summary:', err);
-      setErrorMsg(err.message || 'Failed to get synopsis.');
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
+  const [isSaving, setIsSaving] = useState(false);
   // TV progress state variables
   const [currentSeason, setCurrentSeason] = useState(item.currentSeason || 1);
   const [currentEpisode, setCurrentEpisode] = useState(item.currentEpisode || 0);
@@ -177,19 +109,44 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    if (isSaving) return;
+    setIsSaving(true);
+
     let currentImageUrl = item.imageUrl;
-    
-    // If title or ISBN changed, try to fetch a new cover
-    if (title !== item.title || (type === MediaType.BOOK && isbn !== item.isbn)) {
+    let finalNotes = notes;
+    let finalTags = tags;
+
+    // If title or ISBN changed, fetch a new cover
+    const fetchCover = async () => {
+      if (title === item.title && !(type === MediaType.BOOK && isbn !== item.isbn)) return currentImageUrl;
       if ([MediaType.MOVIE, MediaType.SHOW, MediaType.DOCUMENTARY].includes(type)) {
-        currentImageUrl = await fetchMediaPoster(title, type as any) || currentImageUrl;
+        return await fetchMediaPoster(title, type as any) || currentImageUrl;
       } else if (type === MediaType.BOOK) {
-        currentImageUrl = await fetchBookCover(title, isbn) || currentImageUrl;
+        return await fetchBookCover(title, isbn) || currentImageUrl;
       } else if (type === MediaType.GAME) {
-        currentImageUrl = await fetchGameCover(title) || currentImageUrl;
+        return await fetchGameCover(title) || currentImageUrl;
       }
+      return currentImageUrl;
+    };
+
+    // If title changed, refresh the summary block in the notes and add genre tags
+    const fetchSummary = async () => {
+      if (title === item.title) return { notes, tags };
+      return enrichWithSynopsis(title, type, notes, tags);
+    };
+
+    let coverResult: string | undefined = currentImageUrl;
+    let summaryResult = { notes, tags };
+    try {
+      [coverResult, summaryResult] = await Promise.all([fetchCover(), fetchSummary()]);
+    } catch (err) {
+      console.warn('Cover or summary lookup failed, saving without it:', err);
+    } finally {
+      setIsSaving(false);
     }
+    currentImageUrl = coverResult;
+    finalNotes = summaryResult.notes;
+    finalTags = summaryResult.tags;
 
     let finalEndDate = endDate;
     let finalStatus = derivedStatus;
@@ -208,8 +165,8 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
       type,
       status: finalStatus,
       rating,
-      notes,
-      tags,
+      notes: finalNotes,
+      tags: finalTags,
       imageUrl: currentImageUrl,
       link: link || undefined,
       isbn: type === MediaType.BOOK ? isbn : undefined,
@@ -509,26 +466,6 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                   </div>
                 </div>
               )}
-
-              {/* AI Synopsis Trigger */}
-              <div className="flex flex-col gap-1.5 pt-1 w-full">
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleGetSummary}
-                    disabled={isAnalyzing || summaryAdded}
-                    className="text-xs font-medium text-[#576d87] hover:text-[#e7e7e7] transition-colors bg-transparent border-none p-0 cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
-                  >
-                    <Sparkles size={12} className={isAnalyzing ? "animate-pulse" : ""} />
-                    {isAnalyzing ? "Analyzing..." : summaryAdded ? "Summary added to notes" : "Get summary"}
-                  </button>
-                </div>
-                {errorMsg && (
-                  <span className="text-[10px] text-red-400 font-medium">
-                    {errorMsg}
-                  </span>
-                )}
-              </div>
 
               {/* Notes (Always show) */}
               <div className="w-full">
@@ -1276,9 +1213,10 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
               </button>
               <button
                 type="submit"
-                className="flex-1 px-6 py-4 bg-primary-accent text-app-bg rounded-2xl font-bold hover:brightness-110 transition-all shadow-lg shadow-primary-accent/10"
+                disabled={isSaving}
+                className="flex-1 px-6 py-4 bg-primary-accent text-app-bg rounded-2xl font-bold hover:brightness-110 transition-all shadow-lg shadow-primary-accent/10 disabled:opacity-60"
               >
-                Update Item
+                {isSaving ? 'Updating…' : 'Update Item'}
               </button>
             </div>
           </div>

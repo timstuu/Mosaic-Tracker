@@ -330,12 +330,20 @@ The game cover fetching was previously handled by a local Express proxy. To rest
 
 ## Synopsis / Summary
 
-The "Get summary" feature (genres + synopsis) is generated entirely from free metadata APIs you already use — no LLM, no API costs, no extra setup:
+The automatic summary (genres + synopsis) is generated entirely from free metadata APIs you already use — no LLM, no API costs, no extra setup:
 - Movies/Shows/Documentaries: TMDB (`fetchMediaSynopsis` in `src/services/tmdbService.ts`)
 - Games: RAWG (`fetchGameSynopsis` in `src/services/gameService.ts`)
 - Books: Open Library (`fetchBookSynopsis` in `src/services/bookService.ts`)
 
 These call the same public APIs already used for search/covers and run client-side, so they work identically in local dev and on GitHub Pages.
+
+The summary is added automatically (`src/services/synopsisService.ts`):
+- when you add an item with the "+" form or with "Add to backlog" (CSV import is skipped on purpose),
+- when you change the title of an existing item. An existing `Summary:` block in the notes is replaced; your own notes stay. Genres are added to the tags.
+
+## Avatar Storage
+
+Profile pictures are uploaded to a public storage bucket named `avatars`. Run [`supabase/avatars_bucket.sql`](supabase/avatars_bucket.sql) once in the Supabase SQL Editor to create it with per-user write policies. Without the bucket the app falls back to a small 128px inline image.
 
 ## PWA Icons
 
@@ -352,7 +360,7 @@ To host your Mosaic Tracker on GitHub Pages:
         -   `VITE_SUPABASE_URL`: Your Supabase project URL.
         -   `VITE_SUPABASE_ANON_KEY`: Your Supabase project anonymous key.
         -   `VITE_TMDB_API_KEY`: Your TMDB API key (optional).
-        -   `VITE_RAWG_API_KEY`: Your RAWG API key (optional, needed for game covers and "Get summary" on games).
+        -   `VITE_RAWG_API_KEY`: Your RAWG API key (optional, needed for game covers and summaries on games).
 3.  **Enable Pages**:
     -   Go to **Settings > Pages**.
     -   Under **Build and deployment > Source**, select **GitHub Actions**.
