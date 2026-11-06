@@ -5,6 +5,7 @@ import {
   UserMinus, UserPlus, X, Shield, Bell
 } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { safeSetItem } from '../lib/safeStorage';
 import { MediaStatus, MediaItem } from '../types';
 import { enablePush, disablePush, isSubscribed, getPermission, PushPermission } from '../lib/push';
 
@@ -24,6 +25,34 @@ interface SettingsProps {
   handleImport: (items: Partial<MediaItem>[]) => Promise<void>;
   fetchMedia: () => Promise<void>;
 }
+
+
+// Scales an image down to a square-bounded JPEG data URL (a few KB instead of several hundred).
+const resizeImageToDataUrl = (file: File, maxSize: number): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, maxSize / Math.max(img.width, img.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        URL.revokeObjectURL(objectUrl);
+        reject(new Error('Canvas not available'));
+        return;
+      }
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(objectUrl);
+      resolve(canvas.toDataURL('image/jpeg', 0.8));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Could not read image'));
+    };
+    img.src = objectUrl;
+  });
 
 export const Settings: React.FC<SettingsProps> = ({
   session,
@@ -104,7 +133,7 @@ export const Settings: React.FC<SettingsProps> = ({
             .single();
           if (!error && data?.avatar_url) {
             setAvatarUrl(data.avatar_url);
-            localStorage.setItem(`avatar_url_${userId}`, data.avatar_url);
+            safeSetItem(`avatar_url_${userId}`, data.avatar_url);
           }
         } catch (e) {
           console.warn('Error fetching avatar from profiles:', e);
@@ -124,7 +153,7 @@ export const Settings: React.FC<SettingsProps> = ({
           { id: 'f-3', username: 'sophie_reads', avatar_url: 'https://api.dicebear.com/7.x/identicon/svg?seed=sophie' }
         ];
         setFriends(defaults);
-        localStorage.setItem(`friends_${userId}`, JSON.stringify(defaults));
+        safeSetItem(`friends_${userId}`, JSON.stringify(defaults));
       }
 
       if (isSupabaseConfigured) {
@@ -144,7 +173,7 @@ export const Settings: React.FC<SettingsProps> = ({
               };
             });
             setFriends(loadedFriends);
-            localStorage.setItem(`friends_${userId}`, JSON.stringify(loadedFriends));
+            safeSetItem(`friends_${userId}`, JSON.stringify(loadedFriends));
           }
         } catch (e) {
           console.warn('Error loading friends from Supabase:', e);
@@ -185,19 +214,17 @@ export const Settings: React.FC<SettingsProps> = ({
       console.warn('Supabase storage upload failed, using local/metadata fallback:', err);
     }
 
-    // 2. Local fallback if storage failed or isn't fully provisioned (Base64 representation)
+    // 2. Fallback if the 'avatars' bucket is missing: a small 128px JPEG as data URL.
+    // The full-size Base64 image used to fill the browser storage (friends feed cache, session).
     if (!publicUrl) {
       try {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64data = reader.result as string;
-          saveAvatarUrl(base64data);
-        };
-        reader.readAsDataURL(file);
-        return;
+        const smallDataUrl = await resizeImageToDataUrl(file, 128);
+        await saveAvatarUrl(smallDataUrl);
       } catch (err) {
-        console.error('FileReader failed:', err);
+        console.error('Avatar fallback failed:', err);
+        setUploading(false);
       }
+      return;
     } else {
       saveAvatarUrl(publicUrl);
     }
@@ -206,7 +233,7 @@ export const Settings: React.FC<SettingsProps> = ({
   const saveAvatarUrl = async (url: string) => {
     setAvatarUrl(url);
     if (userId) {
-      localStorage.setItem(`avatar_url_${userId}`, url);
+      safeSetItem(`avatar_url_${userId}`, url);
     }
 
     if (isSupabaseConfigured) {
@@ -314,7 +341,7 @@ export const Settings: React.FC<SettingsProps> = ({
     const updated = [...friends, profile];
     setFriends(updated);
     if (userId) {
-      localStorage.setItem(`friends_${userId}`, JSON.stringify(updated));
+      safeSetItem(`friends_${userId}`, JSON.stringify(updated));
     }
     setSearchQuery('');
     setSearchResults([]);
@@ -336,7 +363,7 @@ export const Settings: React.FC<SettingsProps> = ({
     const updated = friends.filter(f => f.id !== friendId);
     setFriends(updated);
     if (userId) {
-      localStorage.setItem(`friends_${userId}`, JSON.stringify(updated));
+      safeSetItem(`friends_${userId}`, JSON.stringify(updated));
     }
     setIsContextMenuOpen(false);
     setActiveFriendId(null);

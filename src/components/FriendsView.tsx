@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Plus, Users, Loader2, Check } from 'lucide-react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { safeGetItem, safeSetItem, withoutInlineImage } from '../lib/safeStorage';
 import { MediaItem, MediaType, MediaStatus } from '../types';
 
 interface FriendProfile {
@@ -61,7 +62,7 @@ export const FriendsView: React.FC<FriendsViewProps> = React.memo(({ session, on
       setError(null);
 
       // Pre-load from local storage cache to ensure immediate and offline content
-      const cached = localStorage.getItem(`friends_feed_${currentUserId}`);
+      const cached = safeGetItem(`friends_feed_${currentUserId}`);
       if (cached) {
         try {
           const parsed = JSON.parse(cached);
@@ -85,7 +86,7 @@ export const FriendsView: React.FC<FriendsViewProps> = React.memo(({ session, on
       
       if (friendIds.length === 0) {
         setFeedItems([]);
-        localStorage.setItem(`friends_feed_${currentUserId}`, JSON.stringify([]));
+        safeSetItem(`friends_feed_${currentUserId}`, JSON.stringify([]));
         setLoading(false);
         return;
       }
@@ -101,6 +102,8 @@ export const FriendsView: React.FC<FriendsViewProps> = React.memo(({ session, on
   .eq('status', 'completed')
   .order('watchDate', { ascending: false })
   .limit(50);
+
+      if (error) throw error;
 
       const sixMonthsAgo = new Date();
       sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
@@ -132,7 +135,14 @@ export const FriendsView: React.FC<FriendsViewProps> = React.memo(({ session, on
       });
 
       setFeedItems(formattedFeed);
-      localStorage.setItem(`friends_feed_${currentUserId}`, JSON.stringify(formattedFeed));
+      // Cache without inline (Base64) images. One Base64 avatar copied into every feed entry
+      // used to exceed the storage quota and showed a false error banner.
+      const cacheable = formattedFeed.map(item => ({
+        ...item,
+        imageUrl: withoutInlineImage(item.imageUrl),
+        profiles: item.profiles && { ...item.profiles, avatar_url: withoutInlineImage(item.profiles.avatar_url) },
+      }));
+      safeSetItem(`friends_feed_${currentUserId}`, JSON.stringify(cacheable));
     } catch (err: any) {
       const errMsg = err?.message || String(err);
       console.warn('Friends feed fetch lookup skipped/offline:', errMsg);
