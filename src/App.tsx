@@ -27,6 +27,7 @@ import { Settings } from './components/Settings';
 import { FriendsView } from './components/FriendsView';
 import { TrackerRow } from './components/TrackerRow';
 import { ReminderBell } from './components/ReminderBell';
+import { CinemaBadge } from './components/CinemaBadge';
 
 type Page = 'tracker' | 'backlog' | 'analytics' | 'friends' | 'settings';
 
@@ -994,6 +995,7 @@ const dateB = new Date(b.watchDate || b.endDate || b.dateAdded || 0).getTime() |
                                   </div>
                                 )}
                                 <ReminderBell item={item} variant="overlay" />
+                                <CinemaBadge item={item} variant="overlay" />
                               </motion.div>
                             );
                           } catch (err) {

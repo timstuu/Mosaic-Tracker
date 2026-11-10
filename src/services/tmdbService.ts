@@ -309,3 +309,80 @@ export async function fetchWatchProviders(
     return undefined;
   }
 }
+
+export interface NowPlayingMovie {
+  id: number;
+  title: string;
+  originalTitle: string;
+}
+
+const NOW_PLAYING_CACHE_KEY = 'tmdb-now-playing-de';
+const NOW_PLAYING_MAX_PAGES = 5;
+let nowPlayingPromise: Promise<NowPlayingMovie[]> | undefined;
+
+/** Lowercase, no accents, no punctuation: "Dune: Part Two" and "dune part two" match. */
+export function normalizeTitle(title: string): string {
+  return title
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9ß]+/g, ' ')
+    .trim();
+}
+
+/**
+ * Movies that run in German cinemas right now (TMDB "now_playing", region DE).
+ * Loaded once per day: the list is cached in localStorage with today's date and
+ * shared between all callers, so a long backlog costs only a few requests.
+ */
+export function fetchNowPlayingDE(): Promise<NowPlayingMovie[]> {
+  if (nowPlayingPromise) return nowPlayingPromise;
+
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    const cached = JSON.parse(localStorage.getItem(NOW_PLAYING_CACHE_KEY) || 'null');
+    if (cached?.date === today && Array.isArray(cached.movies)) {
+      nowPlayingPromise = Promise.resolve(cached.movies);
+      return nowPlayingPromise;
+    }
+  } catch {
+    // Storage blocked or corrupt: load from the API instead.
+  }
+
+  if (!TMDB_API_KEY) return Promise.resolve([]);
+
+  nowPlayingPromise = (async () => {
+    const movies: NowPlayingMovie[] = [];
+    try {
+      let totalPages = 1;
+      for (let page = 1; page <= Math.min(totalPages, NOW_PLAYING_MAX_PAGES); page++) {
+        const response = await fetch(
+          `${BASE_URL}/movie/now_playing?api_key=${TMDB_API_KEY}&region=DE&language=de-DE&page=${page}`
+        );
+        if (!response.ok) throw new Error(`TMDB API error: ${response.status}`);
+        const data = await response.json();
+        totalPages = data.total_pages || 1;
+        for (const m of data.results || []) {
+          movies.push({ id: m.id, title: m.title || '', originalTitle: m.original_title || '' });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching now playing movies from TMDB:', error);
+      // Do not cache a failed load, so the next app start tries again.
+      nowPlayingPromise = undefined;
+      return movies;
+    }
+    try {
+      localStorage.setItem(NOW_PLAYING_CACHE_KEY, JSON.stringify({ date: today, movies }));
+    } catch {
+      // Storage full or blocked: the in-memory list still works for this session.
+    }
+    return movies;
+  })();
+  return nowPlayingPromise;
+}
+
+/** Google shows showtimes for cinemas near the viewer for this query. */
+export function showtimesSearchUrl(title: string): string {
+  return `https://www.google.com/search?q=${encodeURIComponent(`${title} Kino Spielzeiten`)}`;
+}
