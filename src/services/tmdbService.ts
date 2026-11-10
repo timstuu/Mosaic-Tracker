@@ -382,7 +382,10 @@ export function fetchNowPlayingDE(): Promise<NowPlayingMovie[]> {
   return nowPlayingPromise;
 }
 
-/** Google shows showtimes for cinemas near the viewer for this query. */
+/** City added to the showtimes search, so Google lists cinemas there. */
+const SHOWTIMES_CITY = 'Hamburg';
+
+/** Google search for this movie's showtimes in SHOWTIMES_CITY. */
 export function showtimesSearchUrl(title: string): string {
-  return `https://www.google.com/search?q=${encodeURIComponent(`${title} Kino Spielzeiten`)}`;
+  return `https://www.google.com/search?q=${encodeURIComponent(`${title} Kino ${SHOWTIMES_CITY} Spielzeiten`)}`;
 }

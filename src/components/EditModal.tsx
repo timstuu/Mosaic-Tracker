@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Film, Tv, Book, Gamepad2, Star, Calendar, Monitor, Cpu, Bell } from 'lucide-react';
+import { X, Film, Tv, Book, Gamepad2, Star, Calendar, Monitor, Cpu, Bell, ExternalLink } from 'lucide-react';
 import { OptionSelect, TagInput } from './SuggestInputs';
 import { MediaType, MediaStatus, MediaItem } from '../types';
 import { fetchMediaPoster, fetchSimilarRecommendations, TMDbRecommendation } from '../services/tmdbService';
@@ -211,8 +211,22 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
           <div className="flex-1 min-h-0 p-6 sm:p-8 space-y-6 overflow-y-auto custom-scrollbar">
             {/* Title & Banners (Always at the top) */}
             <div className="space-y-3">
+              {/* Tapping the title opens the entry's own link, or a search for the title. */}
               <h1 className="text-2xl font-bold text-white leading-tight font-sans">
-                {title}
+                <a
+                  href={
+                    link ||
+                    ([MediaType.MOVIE, MediaType.SHOW, MediaType.DOCUMENTARY].includes(type)
+                      ? 'https://www.werstreamt.es/filme-serien/?q=' + encodeURIComponent(title)
+                      : `https://www.google.com/search?q=${encodeURIComponent(title)}`)
+                  }
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-primary-accent transition-colors"
+                >
+                  {title}
+                  <ExternalLink size={14} className="inline-block ml-2 align-baseline text-zinc-500" />
+                </a>
               </h1>
               
               {/* Category and Status Badge */}
@@ -634,42 +648,6 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                 </button>
               </>
             )}
-
-            {(item.status === MediaStatus.PLANNED || derivedStatus === MediaStatus.PLANNED) && (
-              <button
-                type="button"
-                onClick={() => {
-                  const today = new Date().toISOString().split('T')[0];
-                  setWatchDate(today);
-                  setEndDate(today);
-                  if (!startDate) {
-                    setStartDate(today);
-                  }
-                  setIsEditing(true);
-                }}
-                className="col-span-2 sm:flex-1 px-4 py-3 bg-emerald-500/10 hover:bg-emerald-500 hover:text-app-bg text-emerald-400 border border-emerald-500/20 rounded-xl text-xs font-bold uppercase tracking-widest transition-all"
-              >
-                Mark as Tracked
-              </button>
-            )}
-
-            {/* Open Link */}
-            {(() => {
-              const defaultSearchLink = (type === MediaType.MOVIE || type === MediaType.SHOW || type === MediaType.DOCUMENTARY)
-                ? 'https://www.werstreamt.es/filme-serien/?q=' + encodeURIComponent(title)
-                : `https://www.google.com/search?q=${encodeURIComponent(title)}`;
-              const linkUrl = link || defaultSearchLink;
-              return (
-                <a
-                  href={linkUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="col-span-2 sm:w-auto px-4 py-3 bg-app-bg text-zinc-300 border border-white/10 hover:bg-white/5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all flex items-center justify-center gap-1.5"
-                >
-                  Open Link
-                </a>
-              );
-            })()}
 
             {/* Edit Button */}
             <button
