@@ -4,6 +4,7 @@ import { X, Film, Tv, Book, Gamepad2, Star, Calendar, Monitor, Cpu, Bell } from 
 import { OptionSelect, TagInput } from './SuggestInputs';
 import { MediaType, MediaItem, MediaStatus } from '../types';
 import { searchTVShows, fetchTVShowDetails, searchMovies } from '../services/tmdbService';
+import { useSeasonEpisodeCount } from '../hooks/useSeasonEpisodeCount';
 import { searchBooks } from '../services/bookService';
 import { searchGames } from '../services/gameService';
 
@@ -47,6 +48,11 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave, platformO
   const [totalSeasons, setTotalSeasons] = useState(1);
   const [totalEpisodes, setTotalEpisodes] = useState(0);
   const [imageUrl, setImageUrl] = useState('');
+
+  const tmdbEpisodes = useSeasonEpisodeCount(title, currentSeason, type === MediaType.SHOW, info => {
+    setTotalEpisodes(info.episodeCount);
+    setTotalSeasons(info.totalSeasons);
+  });
 
   // Suggestions state
   const [suggestions, setSuggestions] = useState<UnifiedSuggestion[]>([]);
@@ -469,12 +475,20 @@ export const MediaForm: React.FC<MediaFormProps> = ({ onClose, onSave, platformO
                           <div className="space-y-1.5 min-w-0">
                             <label className="block text-[9px] font-bold text-zinc-400 uppercase tracking-widest">
                               Episodes in Season
+                              {tmdbEpisodes.loading ? (
+                                <span className="ml-1 normal-case tracking-normal text-zinc-500">· TMDB…</span>
+                              ) : tmdbEpisodes.autoFilled ? (
+                                <span className="ml-1 normal-case tracking-normal text-zinc-500">· TMDB</span>
+                              ) : null}
                             </label>
                             <input
                               type="number"
                               min={1}
                               value={totalEpisodes || ''}
-                              onChange={(e) => setTotalEpisodes(Math.max(0, parseInt(e.target.value) || 0))}
+                              onChange={(e) => {
+                                setTotalEpisodes(Math.max(0, parseInt(e.target.value) || 0));
+                                tmdbEpisodes.clearAutoFilled();
+                              }}
                               className="w-full bg-app-bg border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-primary-accent/50 text-center font-mono text-xs"
                               placeholder="e.g. 10, 24..."
                             />

@@ -389,3 +389,38 @@ const SHOWTIMES_CITY = 'Hamburg';
 export function showtimesSearchUrl(title: string): string {
   return `https://www.google.com/search?q=${encodeURIComponent(`${title} Kino ${SHOWTIMES_CITY} Spielzeiten`)}`;
 }
+
+export interface SeasonEpisodeInfo {
+  /** Episodes in the requested season. 0 when TMDB does not know the season. */
+  episodeCount: number;
+  totalSeasons: number;
+}
+
+/**
+ * Episode count of one season of a show, looked up by title (first TMDB match).
+ * Specials (season 0) are ignored for totalSeasons.
+ */
+export async function fetchSeasonEpisodeCount(title: string, season: number): Promise<SeasonEpisodeInfo | undefined> {
+  if (!TMDB_API_KEY || !title.trim() || season < 1) return undefined;
+  try {
+    const searchResponse = await fetch(
+      `${BASE_URL}/search/tv?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(title)}`
+    );
+    if (!searchResponse.ok) throw new Error(`TMDB API error: ${searchResponse.status}`);
+    const match = (await searchResponse.json()).results?.[0];
+    if (!match) return undefined;
+
+    const detailsResponse = await fetch(`${BASE_URL}/tv/${match.id}?api_key=${TMDB_API_KEY}`);
+    if (!detailsResponse.ok) throw new Error(`TMDB API error: ${detailsResponse.status}`);
+    const details = await detailsResponse.json();
+    const seasons: Array<{ season_number: number; episode_count: number }> = details.seasons || [];
+    const entry = seasons.find(s => s.season_number === season);
+    return {
+      episodeCount: entry?.episode_count || 0,
+      totalSeasons: details.number_of_seasons || seasons.filter(s => s.season_number > 0).length || 1,
+    };
+  } catch (error) {
+    console.error('Error fetching season episode count from TMDB:', error);
+    return undefined;
+  }
+}

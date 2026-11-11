@@ -8,6 +8,7 @@ import { fetchBookCover } from '../services/bookService';
 import { fetchGameCover } from '../services/gameService';
 import { enrichWithSynopsis } from '../services/synopsisService';
 import { WatchProviders } from './WatchProviders';
+import { useSeasonEpisodeCount } from '../hooks/useSeasonEpisodeCount';
 
 interface EditModalProps {
   item: MediaItem;
@@ -48,6 +49,18 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
   const [currentEpisode, setCurrentEpisode] = useState(item.currentEpisode || 0);
   const [totalSeasons, setTotalSeasons] = useState(item.totalSeasons || 1);
   const [totalEpisodes, setTotalEpisodes] = useState(item.totalEpisodes || 0);
+
+  // Keep the stored count when the entry opens; refresh it when the season or title changes.
+  const tmdbEpisodes = useSeasonEpisodeCount(
+    title,
+    currentSeason,
+    type === MediaType.SHOW,
+    info => {
+      setTotalEpisodes(info.episodeCount);
+      setTotalSeasons(info.totalSeasons);
+    },
+    (item.totalEpisodes || 0) > 0
+  );
 
   // Show the 09:00 default only while the field is genuinely empty and untouched.
   const showTimeHint = !!reminderDate && !reminderTime && !timeFocused;
@@ -912,12 +925,20 @@ export const EditModal: React.FC<EditModalProps> = ({ item, onClose, onSave, onD
                           <div className="space-y-1.5 min-w-0">
                             <label className="block text-[9px] font-bold text-[#576d87] uppercase tracking-widest">
                               Total Eps
+                              {tmdbEpisodes.loading ? (
+                                <span className="ml-1 normal-case tracking-normal text-zinc-500">· TMDB…</span>
+                              ) : tmdbEpisodes.autoFilled ? (
+                                <span className="ml-1 normal-case tracking-normal text-zinc-500">· TMDB</span>
+                              ) : null}
                             </label>
                             <input
                               type="number"
                               min={0}
                               value={totalEpisodes || ''}
-                              onChange={(e) => setTotalEpisodes(Math.max(0, parseInt(e.target.value) || 0))}
+                              onChange={(e) => {
+                                setTotalEpisodes(Math.max(0, parseInt(e.target.value) || 0));
+                                tmdbEpisodes.clearAutoFilled();
+                              }}
                               className="w-full bg-app-bg border border-white/10 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-primary-accent/50 text-center font-mono text-xs"
                               placeholder="Total"
                             />
